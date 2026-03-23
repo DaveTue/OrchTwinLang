@@ -1,0 +1,9 @@
+switch: temp_switch
+       input: float Temp_Sens [°C]
+       input: float Temp_Mod [°C]
+       output: float Temp [°C]
+       behaviour: 
+	       if Temp_Sens.empty():
+ 	              Temp = Temp_Mod
+	       else:
+	              Temp = Temp_Sens

@@ -1,0 +1,19 @@
+Component manager:
+    model yeast_groth_prediction ((float) T_wort (K)) -> [(float) T_wort (K)]:
+        config:
+            mass = 1000 (kg)
+            othermass = 600 (m)
+    model alcohol_prediction ((float) T_wort (K)) -> [(float) T_wort (K)]:
+        config:
+            mass = 1000 (kg)
+            othermass = 600 (m)
+
+    global -> None:
+        mass = 1000 (kg)
+        delta = 90 (m)
+        mass = 1000 (kg)
+        delta = 90 (m)
+
+    sensor Tilt_hidrometer ->   [(JSON) Temp (K)]
+
+    ux User_Interface -> [(JSON) C_y0 (kg), (JSON) Start_service (-)]

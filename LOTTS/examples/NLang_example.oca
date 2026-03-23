@@ -1,0 +1,146 @@
+# example Truck rolling over prevention Service
+# objetive: predict a rolling over accident that suggesting and controlling the maximum 
+# possible speed of the truck when entering a curve, 
+# and controlling the speed during the cornering of the truck
+# 4 models, 4 sensors, 1 actuator, 1 UX, 1 data processing mode, 1 AI model
+
+component manager:
+    Sensor Anemometer () -> [JSON wind speed [m s-1] , out = [x,y,z] wind direction [-]]
+
+    Sensor VSS_and_Steering angle () -> [output JSON vehicle_speed [km h-1], output JSON Steering_angle[degrees]]
+
+    Sensor Trailer_angular_sensor () -> [out = JSON angle_tracktor-trailer [degrees]]
+
+    Sensor camera() -> [output JSON video []]
+
+    UX Diver UX (in =  float max_vehicle_speed [km h-1]) -> None
+
+    actuator Speed controller (float max_vehicle_speed [km h-1])-> None
+
+    Data_processor Sensor_data(JSON wind speed [m s-1], [x,y,z] wind direction [-], 
+        JSON vehicle_speed [km h-1], JSON steering_angle[degrees], 
+        JSON angle_tracktor-trailer [degrees]) -> [float wind speed [m s-1],
+        [float,float,float ] wind direction [-,-,-], float vehicle_speed [km h-1], 
+        float Steering_angle[degrees], float angle_tracktor/trailer [degrees]]
+
+    Data_processor Curve_detection (in = video [-]) -> [out = bool curve_detected [-],
+        out = bool cornering_state [-], out = float Curve_angle [-]]
+
+    ()
+
+    Model Truck_dynamics (float vehicle_speed [km h-1], float steering_angle [degrees],
+    float angle_tracktor/trailer[degrees]) -> [float ay_trailer [m s-2], 
+    float ax_trailer [m s-2], float ay_tracktor [m s-2],float ax_tracktor [m s-2]]:
+        Config:
+            m_truck= 50,000  [kg]
+            d_wheels = 3 [m]
+            ha = 2.5 [m]
+            g = 9.8 [m s-2]
+
+    Model Rollover Threshold (float a_y [m s-2], float incline_angle [degrees],
+        input float K_stifness[N m]) -> [bool safe [-], output float ay_safe[m s-2]]
+        Conf:
+            m_truck= 50,000  [kg]
+            d_wheels = 3 [m]
+            ha = 2.5 [m]
+            g = 9.8 [m s-2]
+
+    Model Wind drag (float vehicle_speed [m s-1], [float,float,float] wind speed [m s-1,m s-1,m s-1]) 
+        -> [[float,float,float] drag_force [N,N,N]]
+        Config:
+            Cx,y,z = 1.9 [-]
+            A_front = 20 [m2]
+            A_flat 15 [m2]
+
+    Model Suspension deformation (float Fy [N], float Fx [N]) -> [float Incline_angle [degrees],
+        output float K_stiffness [N m]]
+
+Communication manager:
+    Switch steeringangle_switch ((float) steering_angleSen (-), (float) steering_angle-model (-)) -> [(float) steering_angle (-)]:
+        def:
+            if Cornering_state == True:
+                steering_angle =  steering_angleSen 
+            else:
+                steering_angle =  steering_angle_model 
+
+    Dupplicate accel_dup (float ay_trailer [m s-2]) -> [float ay_trailer1 [m s-2],
+        float ay_trailer2 [m s-2]]
+
+    Dupplicate V_speed dup (float vehicle_speed [km h-1])-> [float vehicle_speed [km h-1],
+        output float vehicle_speed [km h-1]]
+
+    Splitter forces_split([float,float,float] [Fx,Fz, Fy] [N,N,N]) -> [
+        float Fx [N], float Fz [N], float Fy [N]]
+
+    Transformation Force-transform (float ay_trailer [m s-2], float Fy_wind [N]) -> 
+        [float Fy_total [N]]
+        def:
+            m_trailer = 5000
+            Fy_total = Fy_wind + ay_trailer*m_trailer
+
+    Transformation windvector-transform (float wind speed [m s-1], [float,float,float ] wind direction [-,-,-])-> 
+        [[float,float,float]  wind_vector [m s-1,m s-1,m s-1]]
+        def:
+            wind_vector[1] = wind_direction[1] * wind_speed
+            wind_vector[2] = wind_direction[2] * wind_speed
+            wind_vector[3] = wind_direction[3] * wind_speed
+
+    Transformation curveAngle-transform (float curve_radious [m]) ->
+        [float steering_angle [degrees]]
+        def:
+            wheelBase = 0.3
+            steering_ratio = 16
+            steering_angle = cos(wheelBase/curve_radios)*steering_ratio
+    
+    #Only 3 examples
+    Connect SenDPWindspeed (src = Anemometer.wind_speed, dst = Sensor-data.wind_speed )->LIFO
+    Connect VideoStreaming (Camera.video, curve_detection.video exchange) -> FIFO
+    Connect curve_radious (curve_detection.curve_radious,curveAngle-transform.curve_radious) -> LVQ
+
+Execution manager:
+    Source Sensors_execution (Anemometer, VSS & steering angle, 
+        trailer angular sensor, camera, curve detectio, sensor data) -> streaming
+    
+        trigger() -> Guard: 
+            global_variables.start_service = True
+    Sink  Output_execution (Diver UX, speed controller) -> streaming
+        trigger() -> streaming
+    
+    ModelsExec Truck_dynamics_exec (Truck_Dynamics) -> time-based:
+        trigger() -> Command (discuss with Loek)
+        configuration:
+            exe_time = AFAP
+            t_ini = 0
+            t_period = 5 [min]
+            t_step = 1 [s]
+    
+    ModelsExec Service Exec (Truck_dynamics_exec, wind drag, 
+        suspention deformation rollover threshold) -> schedule:
+        trigger() -> event
+            global_variables.curve_detection == True 
+            OR 
+            global_variables.cornening_state == True WITH freq = 30 [s]
+        def():
+            Function EvalModels(AreaDynamics, ModRolling , 
+                ayDynamics,ayRolling, ay_safe, V , val_speed = 50)
+	            AreaDynamics.V =  val_speed
+                AreaDynamics.exec()
+                ModRolling.ayRolling= AreaDynamics.ayDynamics
+                ModRolling.exec()
+                return (ModRolling.ay_safe)
+            if global_variables.curve_detection == True AND global_variables.cornening_state == False:
+                #classic sequence
+                Trucks_dynamics_exec.exec()
+                wind_drag.exec()
+                suspension_deformation.exec()
+                rollover_threshold.exec()
+            elif global_variables.cornening_state == True
+                #complex execution
+                Diff= 100
+                speed= Sensor_data.vehicle.speed
+                tol = 0.001
+                while dif > tol:
+                    ay_safe= EvalModels(Trucks_dynamics_exec, rollover_threshold, ay_trailer,ay, 			ay_safe, vehicle_speed , val_speed = speed)
+                    ay_safeD= EvalModels(Trucks_dynamics_exec, Rollover_threshold, ay_trailer,ay, 			ay_safe, vehicle_speed , val_speed = speed+1)
+                    speed= speed- ay_safe/ay_safeD
+                    diff=  abs(ay_safe - Trucks_dynamics_exec.ay_trailer)

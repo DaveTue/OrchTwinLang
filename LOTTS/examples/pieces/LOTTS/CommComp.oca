@@ -1,0 +1,33 @@
+Communication manager:
+    split k_const_split (([float,float]) K_consts ([s^-1,s^-1])) ->  [(float) k_y (s^-1), (float) k_1 (s^-1)]
+
+    aggregate C_y_aggr ((float) C_yMon (mol ml^-1), (float) C_y_OH (mol ml^-1)) -> [([float,float]) C_y ([mol ml^-1,mol ml^-1])]
+
+    duplicate C_y_dup ((float) C_y (mol ml^-1)) -> [(float) C_yMon (mol ml^-1), (float) C_y_OH (mol ml^-1)]
+
+    connect Sen_Temp_DataProcess (src:Tilt_hydrometer.Temp_wort,dst:Sensor_data.T_wort) -> LIFO
+
+    switch steeringangle_switch ((float) steering_angleSen (-), (float) steering_angle_model (-)) -> [(float) steering_angle (-)]:
+        def:
+            if Cornering_state == True:
+                steering_angle =  steering_angleSen 
+            else:
+                steering_angle =  steering_angle_model 
+
+    switch Twort_switch ((float) T_wort_sen (K), (float) T_wort_model (K)) -> [(float) T_wort (K)]:
+        def:
+            if T_wort_connector.empty(): 
+                T_worth =  T_wort_model 
+            else:
+                T_worth = T_wort_sens
+    
+    transform windvector_transform ((float) wind_speed (m s^-1), ([float,float,float]) wind_direction ([-,-,-]))-> [([float,float,float])  wind_vector ([m s^-1,m s^-1,m s^-1])]:
+        def:
+            wind_vector[1] = wind_direction[1] * wind_speed
+            wind_vector[2] = wind_direction[2] * wind_speed
+            wind_vector[3] = wind_direction[3] * wind_speed
+    
+    transform Force_transform ((float) ay_trailer (m s^-2), (float) Fy_wind (N)) -> [(float) Fy_total (N)]:
+        def:
+            m_trailer = 5000
+            Fy_total = Fy_wind + ay_trailer * m_trailer

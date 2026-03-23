@@ -1,0 +1,8 @@
+Model: Yeast_growth_prediction
+       input: float Temp [°C]
+       input: list Concentration [ mol/l, mol/l]
+	       components: [C_y_0,C_sug_0]
+       output: float C_y [g/l]
+       output: float C_sug [g/l]
+       output: dict Rates [mol/l_s, mol/l_s]
+	       components: [y_rate, sugar_rate]

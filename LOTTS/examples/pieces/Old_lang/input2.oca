@@ -1,0 +1,2 @@
+input: dict Rates [mol/l_s, mol/l_s]
+	      components: [y:y_rate, sug:sugar_rate]

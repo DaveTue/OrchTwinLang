@@ -1,0 +1,15 @@
+Service Name: Test_global
+Component_manager:
+    global -> None:
+        mass = 1000 (kg)
+        delta = 90 (m)
+        mass = 1000 (kg)
+        delta = 90 (m)
+    
+     global ((JSON) C_y0 (kg), (JSON) Start_service (-) )-> None:
+        mass = 1000 (kg)
+        delta = 90 (m)
+        mass = 1000 (kg)
+        delta = 90 (m)
+
+     global ((JSON) C_y0 (kg), (JSON) Start_service (-) )-> None

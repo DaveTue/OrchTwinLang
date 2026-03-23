@@ -1,0 +1,160 @@
+####################################################################################
+#Component definition
+Sensor: Ferm_Temp
+       outport1:  Temp [°F]
+	       Datatype : str
+
+Model: Yeast growth prediction
+       inport1: Temp [°C]
+	       datatype : float
+       inport2: Concentration [ mol/l, mol/l]
+	       datatype : list(str, str)
+	       components: [C_y_0,C_sug_0]
+       outport1: C_y [g/l]
+	       datatype : float
+       outport2: C_sug [g/l]
+	       datatype : float
+       outport3: Rates [mol/l s, mol/l s]
+	       datatype : dict(str, str)
+	       components: [“y”:y_rate, “sug”:sugar_rate]
+
+
+Model: leucine_model
+       inport1: y_rate [mol/l s]
+	       datatype : float
+       outport1: L_conc [mol/l ]
+	       datatype : float
+
+Model: Thermodynamics prediction
+       inport1: sugar_rate [mol/l s]
+	       datatype : float
+       inport2: yeast_rate [mol/l s]
+	       datatype : float
+       outport1: Temp [­­K]
+	       datatype : float
+
+UX: UX
+       input: L_conc [mol/l ]
+	       datatype : float
+
+aggregator1: Conc_aggreggate
+       inport1:  C_y [g/l]
+              Datatype : float
+       inport2:  C_sug [g/l]
+	       Datatype : float
+       outport1:  Concentration [ g/l, g/l]
+	       datatype : list(str, str)
+	       components: [C_y_0,C_sug_0]
+
+duplicator1: rates_duplicator
+       inport1: yeast_rate [mol/l s]
+	       datatype : float
+       outport: yeast_rate1 [mol/l s]
+       outport2: yeast_rate2 [mol/l s]       
+
+switch1: temp_switch
+       inport1:  Temp_Sens [°C]
+              Datatype : float
+       inport2:  Temp_Mod [°C]
+       	Datatype : float
+       outport1:  Temp [°C]
+	       Datatype : float
+       behavior: 
+	       if Temp_Sens.empty():
+ 	              Temp = Temp_Mod
+	       else:
+	              Temp = Temp_Sens
+
+splitter1: rates_splitter
+       inport1: Rates [mol/l s, mol/l s]
+       	datatype : dict(str, str)
+	       components: [“y”:y_rate, “sug”:sugar_rate]
+       outport1: sugar_rate [mol/l s]
+	       datatype : float
+       outport2: yeast_rate [mol/l s]
+	       datatype : float
+
+Operation1: data preprocessing
+       inport1: temp_in [°F]
+	       datatype : float
+       outport1: temp_out [°F]
+	       datatype : float
+       Operation:
+	       temp_out = round(temp_in,2)                 
+
+Operation2: g to mol
+       inport1: Concentration [g/l, g/l]
+	       datatype : list(str, str)
+	       components: [C_y_0,C_sug_0]
+       outport2: Con_out [mol/l, mol/l]
+	       datatype : list(str, str)
+	       components: [C_y_0,C_sug_0]
+         Operation:
+              C_y_in = float(Concentration[0])
+              C_sug_in = float(Concentration[1])
+              PM_sug=392
+              PM_y=44
+              C_y_out = C_y_in/ PM_y
+              C_sug_out = C_sug_in/ PM_sug
+              Con_out = [C_y_out,C_sug_out]
+################################################################################
+#Communication definition
+
+Connect1: T_Sens-Mod
+    Def: Temp from Ferm_Temp -> temp_in from data processing  
+    Exchange: FIFO
+    Transformation: output = input
+Connect2: T_prepro-Switch
+    Def: temp_out from data processing-> Temp_Sens from temp_switch
+    Exchange: FIFO
+    Transformation: output = (input-32)*5/9
+Connect3: T_Switch-Yeast
+    Def: Temp from temp_switch -> Temp from Yeast growth prediction
+    Exchange: FIFO
+    Transformation: output = input
+Connect4: T_Thermo-Switch
+    Def: T from Thermodynamics prediction-> Temp_Mod from temp_switch  
+    Exchange: FIFO
+    Transformation: output = input – 273.15
+Connect5: Conc_Op-Yeast
+    Def: Con_out from g to mol -> Concentration from Yeast growth prediction
+    Exchange: FIFO
+    Transformation: output = input
+Connect6: Cy_Yeast-Agr
+    Def: C_y from Yeast growth prediction-> C_y  from Conc_aggreggate
+    Exchange: FIFO
+    Transformation: output = input 
+ Connect7: Csug_Yeast-Agr
+    Def: C_sug from Yeast growth prediction-> C_sug from Conc_aggreggate
+    Exchange: FIFO
+    Transformation: output = input
+Connect8: Rate-split
+    Def: Rates from Yeast growth pediction-> Rates from rates_splitter
+    Exchange: FIFO
+    Transformation: output = input 
+Connect9: Conc_Agr-Op
+    Def: Concentration from Conc_aggregate -> Concentration from g to mol 
+    Exchange: FIFO
+    Transformation: output = input
+Connect10: Yrate_Split -dup
+    Def:  yeast_rate from rates_splitter -> yeast_rate from rates_duplicator  
+    Exchange: FIFO
+    Transformation: output = input 
+ Connect11: Sugrate_Split-Thermo
+    Def: sugar_rate from rates_splitter > sugar_rate from Thermodycamics prediction-
+    Exchange: FIFO
+    Transformation: output = input
+Connect12: Yrate_dup-Thermo
+    Def: yeast_rate1 from rates_duplicator-> yeast_rate from Thermodynamics prediction
+    Exchange: FIFO
+    Transformation: output = input 
+Connect13: Yrate_dup-Leucine
+    Def: yeast_rate2 from rates_duplicator -> y_rate from leucine model
+    Exchange: FIFO
+    Transformation: output = input
+Connect14: Lconc_Leucine-UX
+    Def:  L_conc from leucine model-> L_conc from UX
+    Exchange: FIFO
+    Transformation: output = input 
+
+####################################################################################################

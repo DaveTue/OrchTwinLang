@@ -1,0 +1,8 @@
+Service Name: BeerService
+Component_manager: 
+    sensor Tilt_hidrometer ->   [(JSON) Temp (K)]
+    
+    model yeast_groth_prediction ((float) T_wort (K)) -> [(float) T_wort (K)]:
+        config:
+            mass = 1000 (kg)
+            othermass = 600 (m)

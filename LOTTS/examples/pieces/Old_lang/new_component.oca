@@ -1,0 +1,24 @@
+sensor Tilt-hidrometer -> [(JSON) Temp_wort ("K"), (JSON) Sg("-")]
+
+actuator Speed controller ((float) max_vehicle_speed (km h-1))-> None
+
+ux Driver_UX ((float) max_vehicle_speed (km h-1)) -> None
+
+db database ((float) max_vehicle_speed (km h-1)) -> [(JSON) speed ("m s-1")]
+
+global glo_var ((bool) cornering_state (-), (bool) curve_detected (-),
+        (bool) safe (-), (float) ay_safe(m s-2)) -> None:
+        truck_mass = 1000 (kg)
+
+dataprocess data_process Sensor_data((JSON) wind speed (m s-1), (float,float,float) wind direction (-))
+     -> [(float) wind_speed (m s-1), (float,float,float) wind_direction ( , , )]
+
+model Yeast_groth_prediction ((float) T_wort (K)) -> [(float) C_y (mol ml-1),
+        (float) C_sug (mol ml-1), (float) C_CO2 (mol ml-1),(float) C_EtOH (mol ml-1),
+        ([float,float]) [k_y, k_1] ([s-1,s-1]), (float) Rate_y (mol ml-1s-1),
+        (float) rate_sug (mol ml-1 s-1)]:
+        
+         config ((float) C_y0 (mol ml-1),(float) C_sug0 (mol ml-1), (float) C_CO20 (mol ml-1)
+            (float) C_EtOH0 (mol ml-1)):
+                m =1000
+model 

@@ -1,0 +1,15 @@
+operation: g_to_mol
+       input: Concentration [g/l, g/l]
+	       datatype : list
+	       components: [C_y_0,C_sug_0]
+       output: Con_out [mol/l, mol/l]
+	       datatype : list
+	       components: [C_y_0,C_sug_0]
+       behavior:
+              C_y_in = float(Concentration[0])
+              C_sug_in = float(Concentration[1])
+              PM_sug=392
+              PM_y=44
+              C_y_out = C_y_in/ PM_y
+              C_sug_out = C_sug_in/ PM_sug
+              Con_out = [C_y_out,C_sug_out]

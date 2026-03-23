@@ -1,0 +1,118 @@
+# example Predict flavours and Beer quality Service
+# objetive: To predict the flavours of a beer in real time
+# these flavours can not be measure, then can only be estimated
+# 4 models, 3 sensors, 3 UX (1 input and 2 outputs), 1 data processing model
+
+ComponentManager:
+    # Mauricio's version
+    # This could be applied for models also. The idea is to use parenthesis ("()") for only params, and square brackets for "compound" outputs (more than one)
+    # the basic idea is: type id(params) -> [output]:
+    
+    Sensor Tilt-hidrometer -> [(JSON) Temp_wort ("°C"), JSON Sg("-")]
+
+    # David's version
+    Sensor Tilt-hidrometer() -> [out = JSON Temp_wort [°C], JSON Sg [-]]
+
+    Sensor Thermocouple() -> [JSON Temp_cool_wat [°C]]
+
+    Model Yeast_groth_prediction(float T_wort [°C]) -> [float C_y [mol ml-1],
+        float C_sug[mol ml-1], float C_CO2[mol ml-1],float C_EtOH[mol ml-1],
+        [float,float] [k_y, k_1] [s-1,s-1], float Rate_y [mol ml-1s-1],
+        float rate_sug [mol ml-1 s-1]]
+        
+        config (float C_y0 [mol ml-1],float C_sug0[mol ml-1],float C_CO20[mol ml-1]
+            float C_EtOH0[mol ml-1])
+
+    Model Thermodynamics_and_Heat_exchange(float R_suggar[mol ml-1 s-1],
+        float T_cool[K]) -> [float T_wort [°C]]
+        config:
+            Cp = 1.9 [J kg-1 K-1]
+    UX User_Interface -> [(JSON) C_y0 (g), (JSON) Start_service (-)]
+
+    UX Monitor-flavours (float Esthers [mol ml-1], JSON F_OH [mol ml-1]) -> Non
+
+CommunicationManager:
+    Switch Twort_switch (float T_wort-sen [°C], float T_wort-model [°C]) 
+        -> [float T_wort [°C]]
+        def:
+            if T_wort-sens.empty():
+
+		        T_worth =  T_wort-model
+
+	        else:
+
+		        T_worth = T_wort-sens
+
+    Dupplicate C_y-dup (float C_y [mol ml-1]) -> [float C_yMon [mol ml-1],
+        C_y_OH [mol ml-1]]
+
+    Splitter k_const split (in=[float,float] [k_y, k_1] [s-1,s-1]) 
+        ->  [out:float k_y [s-1], out:float k_1 [s-1]]
+
+    transform T_wort_transform ((float) T_wort-model (K)) -> float T_wort (K)
+        def:
+            T_wort = 273.15 + T_wort-model
+
+    # only a few examples
+    Connect Sen_Temp-DataProcess (Tilt-hydrometer.Temp_wort,Sensor-data.T_wort) ->LIFO
+
+    Connect T_worthModel-Transform(src = Thermodynamics.Temp_wort, dst = T_wort-transformation.T_wort-model) -> FIFO
+
+    Connect SuggarRate-Yeast-Thermo (Yeast_groth_prediction.R_sugg, Thermodynamics.R_sugg)-> FIFO
+
+    
+Execution manager:
+
+    Source Sensors_exec (Tilt-hydrometer, Plaato, Thermocouple) -> streaming:
+        trigger() -> Guard:
+            global_variables.start_service = True
+
+    Source UX_exec (User interface) -> invoke:
+        trigger ()->  Event: 
+            user input
+
+    Source Data_process (Sensor_data) -> time-specific
+        trigger ->  Guard: 
+            global_variables.start_service = True
+        def:
+         freq= 30 [min]        
+
+    SInk  OutputShow (Monitor_quality, Monitor_flavours) -> time-specific
+        trigger() -> guard: 
+            global_variables.start_service = True
+        definition():
+            freq= 30 [min]
+
+    ModelsExec Param_setup (Yeast groth prediction.config) -> invoke:
+        trigger()-> temporal:
+            freq = 30 [min]
+
+    ModelsExec Time-sync(Yeast groth prediction, Thermodynamics, 
+        Fusel alcohols, Esters)-> Time-based:
+        trigger-> temporal:
+            freq = 30 [min]
+        configuration :
+            exe_time = AFAP
+            t_ini = global.variables.clock
+            t_period = 30 [min]
+            t_step = 10 [min]
+        
+        InterProcess():
+            Function Eval (T):
+                Yeast groth prediction.T_wort =  T
+                Yeast groth prediction.exec()
+                Thermodynamics.R_sugg = Yeast groth prediction.Rate_sugg
+                Thermodynamics.exec()
+                return (abs(Thermodynamics.T_wort - T))
+
+            difference = 100
+            T_in = Sensor_data.T_wort
+            Thermodynamics.T_cool = Sensor_data.T_cool_w
+            tol = 0.01
+            while difference > tol:
+                T_out = Eval(T_in)
+                T_outD = Eval(T_in+0.01)
+                T_in = T_in - T_out/T_outD
+                difference =  abs(T_in - T_out)		
+    
+    

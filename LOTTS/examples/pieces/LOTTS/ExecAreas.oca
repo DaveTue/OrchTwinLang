@@ -1,0 +1,31 @@
+Execution manager:
+
+
+
+    source Data_process (sensor_data) -> time_specific: 
+        trigger ->  guard.start: 
+            global_variables.start_service == true 
+        def: freq = 30 (min) 
+
+    source sensors_execution (Anemometer, sensor_data) -> streaming:    
+        trigger -> guard.start:
+            global_variables.start_service == true   
+    
+    sink  outputShow (monitor_quality, monitor-flavours) -> time_specific:
+        trigger -> guard.start:
+            global_variables.start_service == True   
+        def:
+            freq = 30 (min)
+    
+    cosim Time-sync(Yeast_groth_prediction, Thermodynamics, Fusel-alcohols, Esters)-> time_based:
+        trigger-> temporal.start:
+            freq = 30 (min)
+        config:
+            exe_time = FTRT
+            t_ini = global.variables.clock
+            t_step = 10 (min)
+            t_period = 30 (min)
+
+
+
+            

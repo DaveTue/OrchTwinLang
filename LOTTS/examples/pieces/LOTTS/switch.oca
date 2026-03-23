@@ -1,0 +1,6 @@
+switch steeringangle_switch ((float) steering_angleSen (-), (float) steering_angle_model (-)) -> [(float) steering_angle (-)]:
+        def:
+            if Cornering_state == True:
+                steering_angle =  steering_angleSen 
+            else:
+                steering_angle =  steering_angle_model 

@@ -1,0 +1,8 @@
+cosim Time-sync(Yeast_groth_prediction, Thermodynamics, Fusel-alcohols, Esters)-> time_based:
+        trigger-> temporal.start:
+            freq = 30 (min)
+        config:
+            exe_time = FTRT
+            t_ini = global.variables.clock
+            t_step = 10 (min)
+            t_period = 30 (min)

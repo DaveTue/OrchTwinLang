@@ -1,0 +1,5 @@
+sink  outputShow (monitor_quality, monitor_flavours) -> time_specific:
+        trigger -> guard.start:
+            global_variables.start_service == True
+        def:
+            freq = 30 (min) 

@@ -1,0 +1,11 @@
+splitter: rates_splitter
+       input: dict Rates [mol/l_s, mol/l_s]
+	       components: [y:y_rate, sug:sugar_rate]
+       output: float sugar_rate [mol/l_s]
+       output: float yeast_rate [mol/l_s]
+
+operation: data_preprocessing
+       input: float temp_in [°F]
+       output: float temp_out [°F]
+       behaviour:
+	       temp_out = round(temp_in,2)

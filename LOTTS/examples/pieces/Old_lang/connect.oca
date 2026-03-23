@@ -1,0 +1,16 @@
+Connect: T_Sens_Mod
+    def: temp.Ferm_Temp -> temp_in.data_processing  
+    exchange: FIFO
+    transformation: output = input
+Connect: T_prepro_Switch
+    def: temp_out.data_processing -> Temp_Sens.temp_switch
+    exchange: FIFO
+    transformation: output = input-32*5/9
+Connect: T_Switch_Yeast
+    def: Temp.temp_switch -> Temp.Yeast_growth_prediction
+    exchange: FIFO
+    transformation: output = input
+Connect: T_Switch_Yeast
+    def: Temp.temp_switch -> Temp.Yeast_growth_prediction
+    exchange: FIFO
+    transformation: output = input

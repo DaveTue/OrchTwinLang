@@ -1,0 +1,11 @@
+aggregator: Conc_aggreggate
+       input: float C_y [g/l]
+       input: float  C_sug [g/l]
+       output: list Concentration [ g/l, g/l]
+	       components: [C_y_0,C_sug_0]
+
+duplicator: rates_duplicator
+       input: yeast_rate [mol/l_s]
+	       datatype : float
+       output: yeast_rate [mol/l_s]
+       output: yeast_rate [mol/l_s]

@@ -1,0 +1,5 @@
+transform windvector_transform ((float) wind_speed (m s^-1), ([float,float,float]) wind_direction ([-,-,-]))-> [([float,float,float])  wind_vector ([m s^-1,m s^-1,m s^-1])]:
+    def:
+        wind_vector[1] = wind_direction[1] * wind_speed
+        wind_vector[2] = wind_direction[2] * wind_speed
+        wind_vector[3] = wind_direction[3] * wind_speed

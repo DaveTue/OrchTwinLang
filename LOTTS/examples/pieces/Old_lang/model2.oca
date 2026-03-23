@@ -1,0 +1,4 @@
+Model: Thermodynamics_prediction
+       input: float sugar_rate [mol/l_s]
+       input: float yeast_rate [mol/l_s]
+       output: float Temp [Kelvin]

@@ -1,0 +1,135 @@
+# This is a full example
+sensor: Ferm_Temp
+       output: str Temp [°F]
+
+model: Yeast_growth_prediction
+       input: float Temp [°C]
+       input: list Concentration [ mol/l, mol/l]
+	       components: [C_y_0,C_sug_0]
+       output: float C_y [g/l]
+       output: float C_sug [g/l]
+       output: dict Rates [mol/l_s, mol/l_s]
+	       components: [y_rate, sugar_rate]
+
+
+model: leucine_model
+       input: float y_rate [mol/l_s]
+       output: float L_conc [mol/l ]
+
+model: Thermodynamics_prediction
+       input: float sugar_rate [mol/l_s]
+       input: float yeast_rate [mol/l_s]
+       output: float Temp [Kelvin]
+
+UX: UX
+       input: float L_conc [mol/l ]
+
+aggregator: Conc_aggreggate
+       input: float C_y [g/l]
+       input: float  C_sug [g/l]
+       output: list Concentration [ g/l, g/l]
+	       components: [C_y_0,C_sug_0]
+
+duplicator: rates_duplicator
+       input: float yeast_rate [mol/l_s]
+       output: yeast_rate [mol/l_s]
+       output: yeast_rate [mol/l_s]
+
+switch: temp_switch
+       input: float Temp_Sens [°C]
+       input: float Temp_Mod [°C]
+       output: float Temp [°C]
+       behaviour: 
+	       if Temp_Sens.empty():
+ 	              Temp = Temp_Mod
+	       else:
+	              Temp = Temp_Sens
+
+splitter: rates_splitter
+       input: dict Rates [mol/l_s, mol/l_s]
+	       components: [y:y_rate, sug:sugar_rate]
+       output: float sugar_rate [mol/l_s]
+       output: float yeast_rate [mol/l_s]
+
+operation: data_preprocessing
+       input: float temp_in [°F]
+       output: float temp_out [°F]
+       behaviour:
+	       temp_out = round(temp_in,2)
+
+operation: g_to_mol
+       input: list Concentration [g/l, g/l]
+	       components: [C_y_0,C_sug_0]
+       output: list Con_out [mol/l, mol/l]
+	       components: [C_y_0,C_sug_0]
+       behaviour:
+              C_y_in = float(Concentration[0])
+              C_sug_in = float(Concentration[1])
+              PM_sug=392
+              PM_y=44
+              C_y_out = C_y_in/ PM_y
+              C_sug_out = C_sug_in/ PM_sug
+              Con_out = [C_y_out,C_sug_out]
+		  while x < 5 :
+		  	x = x + 1
+			y = x / 1
+
+#Communication definition
+connect: T_Sens_Mod
+    def: Ferm_Temp.temp -> data_processing.temp_in
+    exchange: FIFO
+    transformation: output = input
+connect: T_prepro_Switch
+    def: data_processing.temp_out-> temp_switch.Temp_Sens
+    exchange: FIFO
+    transformation: output = input-32*5/9
+connect: T_Switch_Yeast
+    def: temp_switch.Temp -> Yeast_growth_prediction.Temp
+    exchange: FIFO
+    transformation: output = input
+
+connect: T_Thermo_Switch
+    def: Thermodynamics_prediction.T -> temp_switch.Temp_Mod  
+    exchange: FIFO
+    transformation: output = input-273.15
+connect: Conc_Op_Yeast
+    def: g_to_mol.Con_out -> Yeast_growth_prediction.Concentration
+    exchange: FIFO
+    transformation: output = input
+connect: Cy_Yeast_Agr
+    def: Yeast_growth_prediction.C_y-> Conc_aggreggate.C_y
+    exchange: FIFO
+    transformation: output = input 
+
+connect: Csug_Yeast_Agr
+    def: Yeast_growth_prediction.C_sug -> Conc_aggreggate.C_sug
+    exchange: FIFO
+    transformation: output = input
+connect: Rate_split
+    def: Yeast_growth_prediction.Rates -> rates_splitter.Rates
+    exchange: FIFO
+    transformation: output = input 
+connect: Conc_Agr_Op
+    def: Conc_aggregate.Concentration -> g_to_mol.Concentration 
+    exchange: FIFO
+    transformation: output = input
+connect: Yrate_Split_dup
+    def:  rates_splitter.yeast_rate -> rates_duplicator.yeast_rate
+    exchange: FIFO
+    transformation: output = input 
+connect: Sugrate_Split_Thermo
+    def: rates_splitter.sugar_rate -> Thermodycamics_prediction.sugar_rate
+    exchange: FIFO
+    transformation: output = input
+connect: Yrate_dup_Thermo
+    def: rates_duplicator.yeast_rate1 -> Thermodynamics_prediction.yeast_rate
+    exchange: FIFO
+    transformation: output = input 
+connect: Yrate_dup_Leucine
+    def: rates_duplicator.yeast_rate2 -> leucine_model.y_rate
+    exchange: FIFO
+    transformation: output = input
+connect: Lconc_Leucine_UX
+    def:  leucine_model.L_conc -> UX.L_conc
+    exchange: FIFO
+    transformation: output = input 

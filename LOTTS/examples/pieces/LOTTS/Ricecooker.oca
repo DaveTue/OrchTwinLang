@@ -1,0 +1,56 @@
+Service_Name: Rice_Cooker
+
+Component_manager:
+
+    sensor current_sens -> [(JSON) current (Amp)]
+
+    model RiceCooker ((float) Q (Watts)) -> [(float) T_rice (C), (float) mass_rice (kg)]:
+        config ((float) T_0 (C), (float) m_0 (kg)):
+            m_0 = 1.5 (kg)
+            T_0 = 90 (m)
+   
+    model SpringProp  ((float) R (ohm)) -> [(float) k (n m^-1)]:
+
+    model ElectricalHeat  ((float) I (Amp)) -> [(float) Q (Watts), (float) R (Ohms)]:
+        config:
+            V = 150 (Volts)
+
+    ux coil_monitor (float) mass (kg), (float) position (m), (float) T_coil (C) -> None
+
+Communication_manager:
+
+
+    duplicate C_y_dup ((float) C_y (mol ml^-1)) -> [(float) C_yMon (mol ml^-1), (float) C_y_OH (mol ml^-1)]
+
+    transform Force_transform ((float) ay_trailer (m s^-2), (float) Fy_wind (N)) -> [(float) Fy_total (N)]:
+        def:
+            m_trailer = 5000
+            Fy_total = Fy_wind + ay_trailer * m_trailer
+
+    connect ElecHeat2RiceCook (src:ElectricalHeat.Q,dst:RiceCooker.Q) -> FIFO
+
+Execution_manager:
+
+    source Data_process (sensor_data) -> time_specific: 
+        trigger ->  guard.start: 
+            global_variables.start_service == true 
+        def: freq = 30 (min) 
+
+    source sensors_execution (Anemometer, sensor_data) -> streaming:    
+        trigger -> guard.start:
+            global_variables.start_service == true   
+    
+    sink  outputShow (monitor_quality, monitor-flavours) -> time_specific:
+        trigger -> guard.start:
+            global_variables.start_service == True   
+        def:
+            freq = 30 (min)
+    
+    cosim CosimArea(RiceCooker, ElectricalHeat, SpringProp, cookSpring,transform, dup1, dup2)-> time_based:
+        trigger-> temporal.start:
+            freq = 5 (s)
+        config:
+            exe_time = FTRT
+            t_ini = 0
+            t_step = 5 (s)
+            t_period = 1 (s)

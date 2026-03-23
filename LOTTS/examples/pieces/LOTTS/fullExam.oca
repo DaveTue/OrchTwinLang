@@ -1,0 +1,78 @@
+Service Name: BeerService
+    Component_manager:
+        sensor Tilt_hydrometer -> [(JSON) Temp_wort (C), (JSON) Sg (-)]
+
+        sensor Thermocouple -> [(JSON) Temp_cool_wat (C)]
+  
+        model Yeast_groth_prediction ((JSON) T_wort (C)) -> [(float) C_y (mol ml^-1), (float) C_sug (mol ml^-1), (float) C_CO2 (mol ml^-1),(float) C_EtOH(mol ml^-1), ([float,float]) Ks ([s^-1,s^-1]), (float) Rate_y (mol ml^-1 s^-1), (float) rate_sug (mol ml^-1 s^-1)]:    
+            config ((float) C_y0 (mol ml^-1),(float) C_sug0 (mol ml^-1),(float) C_CO20 (mol ml^-1),(float) C_EtOH0 (mol ml^-1))
+            
+        model Thermodynamics ((float) R_suggar (mol ml^-1 s^-1), (float) T_cool (K)) -> [(float) T_wort (K)]:
+            config:
+                Cp = 1.9 (J kg^-1 K^-1)
+
+        ux User_Interface -> [(JSON) C_y0 (g), (JSON) Start_service (-)]
+
+        ux monitor-flavours ((float) Esthers (mol ml^-1), (JSON) F_OH (mol ml^-1)) -> None
+
+        ux monitor_quality ((float) Esthers (mol ml^-1), (JSON) F_OH (mol ml^-1)) -> None
+
+        global -> None:
+            mass = 1000 (kg)
+            delta = 90 (m)
+            mass = 1000 (kg)
+            delta = 90 (m)
+    
+    Communication_manager:
+
+        switch Twort_switch ((float) T_wort_sen (C), (float) T_wort_model (C)) -> [(float) T_wort (C)]:
+            def:
+                if T_wort_sens.empty():
+                    T_worth =  T_wort_model
+                else:
+                    T_worth = T_wort_sens
+
+        duplicate C_y_dup ((float) C_y (mol ml^-1)) -> [(float) C_yMon (mol ml^-1), (float) C_y_OH (mol ml^-1)]
+        
+        split k_const-split (([float,float]) Ks ([s^-1,s^-1])) ->  [(float) k_y (s^-1), (float) k_1 (s^-1)]
+
+        aggregate C_y_aggr ((float) C_yMon (mol ml^-1), (float) C_y_OH (mol ml^-1)) -> [([float,float]) C_y ([mol ml^-1,mol ml^-1])]
+        
+
+        transform T_wort_transform ((float) T_wort-model (K)) -> [(float) T_wort (K)]:
+            def:
+                T_wort = 273.15 + T_wort-model
+                
+        
+
+        connect Sen_Temp-DataProcess (Tilt_hydrometer.Temp_wort,Yeast_groth_prediction.T_wort) -> LIFO
+
+        connect T_worthModel-Transform( Thermodynamics.T_wort, T_wort_transform.T_wort-model) -> FIFO
+
+        connect SuggarRate-Yeast-Thermo (Yeast_groth_prediction.rate_sug, Thermodynamics.R_suggar)-> FIFO
+
+    Execution_manager:
+
+        source Data_process (Tilt_hydrometer) -> time_specific: 
+            trigger ->  guard.start: 
+                global_variables.start_service == true 
+            def: freq = 30 (min) 
+
+        source sensors_execution (Thermocouple, User_Interface) -> streaming:    
+            trigger -> guard.start:
+                global_variables.start_service == true 
+
+         sink  outputShow (monitor_quality, monitor-flavours) -> time_specific:
+            trigger -> guard.start:
+                global_variables.start_service == True   
+            def:
+                freq = 30 (min)
+    
+        cosim Time-sync(Yeast_groth_prediction, Thermodynamics, Fusel-alcohols, Esters)-> time_based:
+            trigger-> temporal.start:
+                freq = 30 (min)
+            config:
+                exe_time = FTRT
+                t_ini = global.variables.clock
+                t_step = 10 (min)
+                t_period = 30 (min)  

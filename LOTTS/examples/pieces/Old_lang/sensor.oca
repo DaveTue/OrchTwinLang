@@ -1,0 +1,2 @@
+Sensor: Ferm_Temp
+       output: str Temp [°F]

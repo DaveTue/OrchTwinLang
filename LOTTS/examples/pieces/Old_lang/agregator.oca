@@ -1,0 +1,15 @@
+
+
+aggregator: Conc_aggreggate_2
+       input: float C_y [g/l]
+       input: float  C_sug [g/l]
+       output: list Concentration [ g/l, g/l]
+	       components: [C_y_0,C_sug_0]
+
+aggregator: Conc_aggreggate_1
+       input: float C_y [g/l]
+       input: float  C_sug [g/l]
+       output: list Concentration [ g/l, g/l]
+	       components: [C_y_0,C_sug_0]
+       output: list Concentration2 [ g/l, g/l]
+              components: [C_y_0,C_sug_0]

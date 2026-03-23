@@ -1,0 +1,2 @@
+trigger -> guard.start:
+    global_variables.start_service == true
