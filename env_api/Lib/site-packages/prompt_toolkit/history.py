@@ -7,13 +7,15 @@ NOTE: There is no `DynamicHistory`:
       loading can be done asynchronously and making the history swappable would
       probably break this.
 """
+
+from __future__ import annotations
+
 import datetime
 import os
 import threading
 from abc import ABCMeta, abstractmethod
-from typing import AsyncGenerator, Iterable, List, Optional, Sequence, Tuple
-
-from prompt_toolkit.eventloop import get_event_loop
+from asyncio import get_running_loop
+from typing import AsyncGenerator, Iterable, Sequence, Union
 
 __all__ = [
     "History",
@@ -37,7 +39,7 @@ class History(metaclass=ABCMeta):
 
         # History that's loaded already, in reverse order. Latest, most recent
         # item first.
-        self._loaded_strings: List[str] = []
+        self._loaded_strings: list[str] = []
 
     #
     # Methods expected by `Buffer`.
@@ -61,7 +63,7 @@ class History(metaclass=ABCMeta):
         for item in self._loaded_strings:
             yield item
 
-    def get_strings(self) -> List[str]:
+    def get_strings(self) -> list[str]:
         """
         Get the strings from the history that are loaded so far.
         (In order. Oldest item first.)
@@ -111,7 +113,7 @@ class ThreadedHistory(History):
 
         self.history = history
 
-        self._load_thread: Optional[threading.Thread] = None
+        self._load_thread: threading.Thread | None = None
 
         # Lock for accessing/manipulating `_loaded_strings` and `_loaded`
         # together in a consistent state.
@@ -119,7 +121,7 @@ class ThreadedHistory(History):
 
         # Events created by each `load()` call. Used to wait for new history
         # entries from the loader thread.
-        self._string_load_events: List[threading.Event] = []
+        self._string_load_events: list[threading.Event] = []
 
     async def load(self) -> AsyncGenerator[str, None]:
         """
@@ -135,7 +137,7 @@ class ThreadedHistory(History):
             self._load_thread.start()
 
         # Consume the `_loaded_strings` list, using asyncio.
-        loop = get_event_loop()
+        loop = get_running_loop()
 
         # Create threading Event so that we can wait for new items.
         event = threading.Event()
@@ -159,7 +161,7 @@ class ThreadedHistory(History):
                     continue
 
                 # Read new items (in lock).
-                def in_executor() -> Tuple[List[str], bool]:
+                def in_executor() -> tuple[list[str], bool]:
                     with self._lock:
                         new_items = self._loaded_strings[items_yielded:]
                         done = self._loaded
@@ -222,7 +224,7 @@ class InMemoryHistory(History):
     `append_string` for all items or pass a list of strings to `__init__` here.
     """
 
-    def __init__(self, history_strings: Optional[Sequence[str]] = None) -> None:
+    def __init__(self, history_strings: Sequence[str] | None = None) -> None:
         super().__init__()
         # Emulating disk storage.
         if history_strings is None:
@@ -253,18 +255,21 @@ class DummyHistory(History):
         pass
 
 
+_StrOrBytesPath = Union[str, bytes, "os.PathLike[str]", "os.PathLike[bytes]"]
+
+
 class FileHistory(History):
     """
     :class:`.History` class that stores all strings in a file.
     """
 
-    def __init__(self, filename: str) -> None:
+    def __init__(self, filename: _StrOrBytesPath) -> None:
         self.filename = filename
         super().__init__()
 
     def load_history_strings(self) -> Iterable[str]:
-        strings: List[str] = []
-        lines: List[str] = []
+        strings: list[str] = []
+        lines: list[str] = []
 
         def add() -> None:
             if lines:
@@ -296,6 +301,6 @@ class FileHistory(History):
             def write(t: str) -> None:
                 f.write(t.encode("utf-8"))
 
-            write("\n# %s\n" % datetime.datetime.now())
+            write(f"\n# {datetime.datetime.now()}\n")
             for line in string.split("\n"):
-                write("+%s\n" % line)
+                write(f"+{line}\n")

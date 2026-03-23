@@ -1,7 +1,10 @@
 """
 Completer for a regular grammar.
 """
-from typing import Dict, Iterable, List
+
+from __future__ import annotations
+
+from typing import Iterable
 
 from prompt_toolkit.completion import CompleteEvent, Completer, Completion
 from prompt_toolkit.document import Document
@@ -24,9 +27,8 @@ class GrammarCompleter(Completer):
     """
 
     def __init__(
-        self, compiled_grammar: _CompiledGrammar, completers: Dict[str, Completer]
+        self, compiled_grammar: _CompiledGrammar, completers: dict[str, Completer]
     ) -> None:
-
         self.compiled_grammar = compiled_grammar
         self.completers = completers
 
@@ -36,11 +38,9 @@ class GrammarCompleter(Completer):
         m = self.compiled_grammar.match_prefix(document.text_before_cursor)
 
         if m:
-            completions = self._remove_duplicates(
+            yield from self._remove_duplicates(
                 self._get_completions_for_match(m, complete_event)
             )
-
-            yield from completions
 
     def _get_completions_for_match(
         self, match: Match, complete_event: CompleteEvent
@@ -80,14 +80,21 @@ class GrammarCompleter(Completer):
                         display_meta=completion.display_meta,
                     )
 
-    def _remove_duplicates(self, items: Iterable[Completion]) -> List[Completion]:
+    def _remove_duplicates(self, items: Iterable[Completion]) -> Iterable[Completion]:
         """
         Remove duplicates, while keeping the order.
         (Sometimes we have duplicates, because the there several matches of the
         same grammar, each yielding similar completions.)
         """
-        result: List[Completion] = []
-        for i in items:
-            if i not in result:
-                result.append(i)
-        return result
+
+        def hash_completion(completion: Completion) -> tuple[str, int]:
+            return completion.text, completion.start_position
+
+        yielded_so_far: set[tuple[str, int]] = set()
+
+        for completion in items:
+            hash_value = hash_completion(completion)
+
+            if hash_value not in yielded_so_far:
+                yielded_so_far.add(hash_value)
+                yield completion

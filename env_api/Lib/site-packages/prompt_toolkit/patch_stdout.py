@@ -17,13 +17,16 @@ Usage::
 Multiple applications can run in the body of the context manager, one after the
 other.
 """
+
+from __future__ import annotations
+
 import asyncio
 import queue
 import sys
 import threading
 import time
 from contextlib import contextmanager
-from typing import Generator, List, Optional, TextIO, Union, cast
+from typing import Generator, TextIO, cast
 
 from .application import get_app_session, run_in_terminal
 from .output import Output
@@ -41,7 +44,7 @@ def patch_stdout(raw: bool = False) -> Generator[None, None, None]:
 
     Writing to this proxy will make sure that the text appears above the
     prompt, and that it doesn't destroy the output from the renderer.  If no
-    application is curring, the behaviour should be identical to writing to
+    application is curring, the behavior should be identical to writing to
     `sys.stdout` directly.
 
     Warning: If a new event loop is installed using `asyncio.set_event_loop()`,
@@ -94,12 +97,11 @@ class StdoutProxy:
         sleep_between_writes: float = 0.2,
         raw: bool = False,
     ) -> None:
-
         self.sleep_between_writes = sleep_between_writes
         self.raw = raw
 
         self._lock = threading.RLock()
-        self._buffer: List[str] = []
+        self._buffer: list[str] = []
 
         # Keep track of the curret app session.
         self.app_session = get_app_session()
@@ -113,11 +115,11 @@ class StdoutProxy:
         self._output: Output = self.app_session.output
 
         # Flush thread
-        self._flush_queue: queue.Queue[Union[str, _Done]] = queue.Queue()
+        self._flush_queue: queue.Queue[str | _Done] = queue.Queue()
         self._flush_thread = self._start_write_thread()
         self.closed = False
 
-    def __enter__(self) -> "StdoutProxy":
+    def __enter__(self) -> StdoutProxy:
         return self
 
     def __exit__(self, *args: object) -> None:
@@ -181,7 +183,7 @@ class StdoutProxy:
             if app_loop is not None:
                 time.sleep(self.sleep_between_writes)
 
-    def _get_app_loop(self) -> Optional[asyncio.AbstractEventLoop]:
+    def _get_app_loop(self) -> asyncio.AbstractEventLoop | None:
         """
         Return the event loop for the application currently running in our
         `AppSession`.
@@ -194,7 +196,7 @@ class StdoutProxy:
         return app.loop
 
     def _write_and_flush(
-        self, loop: Optional[asyncio.AbstractEventLoop], text: str
+        self, loop: asyncio.AbstractEventLoop | None, text: str
     ) -> None:
         """
         Write the given text to stdout and flush.
@@ -202,6 +204,13 @@ class StdoutProxy:
         """
 
         def write_and_flush() -> None:
+            # Ensure that autowrap is enabled before calling `write`.
+            # XXX: On Windows, the `Windows10_Output` enables/disables VT
+            #      terminal processing for every flush. It turns out that this
+            #      causes autowrap to be reset (disabled) after each flush. So,
+            #      we have to enable it again before writing text.
+            self._output.enable_autowrap()
+
             if self.raw:
                 self._output.write_raw(text)
             else:
@@ -264,7 +273,7 @@ class StdoutProxy:
             self._flush()
 
     @property
-    def original_stdout(self) -> TextIO:
+    def original_stdout(self) -> TextIO | None:
         return self._output.stdout or sys.__stdout__
 
     # Attributes for compatibility with sys.__stdout__:

@@ -1,9 +1,11 @@
 # pylint: disable=function-redefined
+from __future__ import annotations
+
 import codecs
 import string
 from enum import Enum
 from itertools import accumulate
-from typing import Callable, Iterable, List, Optional, Tuple, TypeVar, Union
+from typing import Callable, Iterable, Tuple, TypeVar
 
 from prompt_toolkit.application.current import get_app
 from prompt_toolkit.buffer import Buffer, indent, reshape_text, unindent
@@ -71,7 +73,6 @@ class TextObject:
     def __init__(
         self, start: int, end: int = 0, type: TextObjectType = TextObjectType.EXCLUSIVE
     ):
-
         self.start = start
         self.end = end
         self.type = type
@@ -85,7 +86,7 @@ class TextObject:
         else:
             return SelectionType.CHARACTERS
 
-    def sorted(self) -> Tuple[int, int]:
+    def sorted(self) -> tuple[int, int]:
         """
         Return a (start, end) tuple where start <= end.
         """
@@ -94,7 +95,7 @@ class TextObject:
         else:
             return self.end, self.start
 
-    def operator_range(self, document: Document) -> Tuple[int, int]:
+    def operator_range(self, document: Document) -> tuple[int, int]:
         """
         Return a (start, end) tuple with start <= end that indicates the range
         operators should operate on.
@@ -126,7 +127,7 @@ class TextObject:
             )
         return start, end
 
-    def get_line_numbers(self, buffer: Buffer) -> Tuple[int, int]:
+    def get_line_numbers(self, buffer: Buffer) -> tuple[int, int]:
         """
         Return a (start_line, end_line) pair.
         """
@@ -141,7 +142,7 @@ class TextObject:
 
         return from_, to
 
-    def cut(self, buffer: Buffer) -> Tuple[Document, ClipboardData]:
+    def cut(self, buffer: Buffer) -> tuple[Document, ClipboardData]:
         """
         Turn text object into `ClipboardData` instance.
         """
@@ -180,7 +181,7 @@ def create_text_object_decorator(
     """
 
     def text_object_decorator(
-        *keys: Union[Keys, str],
+        *keys: Keys | str,
         filter: Filter = Always(),
         no_move_handler: bool = False,
         no_selection_handler: bool = False,
@@ -303,7 +304,7 @@ def create_operator_decorator(
     """
 
     def operator_decorator(
-        *keys: Union[Keys, str], filter: Filter = Always(), eager: bool = False
+        *keys: Keys | str, filter: Filter = Always(), eager: bool = False
     ) -> Callable[[_OF], _OF]:
         """
         Register a Vi operator.
@@ -370,6 +371,35 @@ def create_operator_decorator(
     return operator_decorator
 
 
+@Condition
+def is_returnable() -> bool:
+    return get_app().current_buffer.is_returnable
+
+
+@Condition
+def in_block_selection() -> bool:
+    buff = get_app().current_buffer
+    return bool(
+        buff.selection_state and buff.selection_state.type == SelectionType.BLOCK
+    )
+
+
+@Condition
+def digraph_symbol_1_given() -> bool:
+    return get_app().vi_state.digraph_symbol1 is not None
+
+
+@Condition
+def search_buffer_is_empty() -> bool:
+    "Returns True when the search buffer is empty."
+    return get_app().current_buffer.text == ""
+
+
+@Condition
+def tilde_operator() -> bool:
+    return get_app().vi_state.tilde_operator
+
+
 def load_vi_bindings() -> KeyBindingsBase:
     """
     Vi extensions.
@@ -394,7 +424,7 @@ def load_vi_bindings() -> KeyBindingsBase:
 
     TransformFunction = Tuple[Tuple[str, ...], Filter, Callable[[str], str]]
 
-    vi_transform_functions: List[TransformFunction] = [
+    vi_transform_functions: list[TransformFunction] = [
         # Rot 13 transformation
         (
             ("g", "?"),
@@ -409,7 +439,7 @@ def load_vi_bindings() -> KeyBindingsBase:
         (("g", "~"), Always(), lambda string: string.swapcase()),
         (
             ("~",),
-            Condition(lambda: get_app().vi_state.tilde_operator),
+            tilde_operator,
             lambda string: string.swapcase(),
         ),
     ]
@@ -526,10 +556,6 @@ def load_vi_bindings() -> KeyBindingsBase:
         Cancel completion. Go back to originally typed text.
         """
         event.current_buffer.cancel_completion()
-
-    @Condition
-    def is_returnable() -> bool:
-        return get_app().current_buffer.is_returnable
 
     # In navigation mode, pressing enter will always return the input.
     handle("enter", filter=vi_navigation_mode & is_returnable)(
@@ -680,13 +706,6 @@ def load_vi_bindings() -> KeyBindingsBase:
             )
         )
 
-    @Condition
-    def in_block_selection() -> bool:
-        buff = get_app().current_buffer
-        return bool(
-            buff.selection_state and buff.selection_state.type == SelectionType.BLOCK
-        )
-
     @handle("I", filter=in_block_selection & ~is_read_only)
     def insert_in_block_selection(event: E, after: bool = False) -> None:
         """
@@ -699,12 +718,12 @@ def load_vi_bindings() -> KeyBindingsBase:
 
         if after:
 
-            def get_pos(from_to: Tuple[int, int]) -> int:
+            def get_pos(from_to: tuple[int, int]) -> int:
                 return from_to[1]
 
         else:
 
-            def get_pos(from_to: Tuple[int, int]) -> int:
+            def get_pos(from_to: tuple[int, int]) -> int:
                 return from_to[0]
 
         for i, from_to in enumerate(buff.document.selection_ranges()):
@@ -961,6 +980,7 @@ def load_vi_bindings() -> KeyBindingsBase:
         )
 
     @handle(">", ">", filter=vi_navigation_mode)
+    @handle("c-t", filter=vi_insert_mode)
     def _indent(event: E) -> None:
         """
         Indent lines.
@@ -970,6 +990,7 @@ def load_vi_bindings() -> KeyBindingsBase:
         indent(buffer, current_row, current_row + event.arg)
 
     @handle("<", "<", filter=vi_navigation_mode)
+    @handle("c-d", filter=vi_insert_mode)
     def _unindent(event: E) -> None:
         """
         Unindent lines.
@@ -1029,7 +1050,7 @@ def load_vi_bindings() -> KeyBindingsBase:
         buff.transform_current_line(lambda s: s.swapcase())
 
     @handle("#", filter=vi_navigation_mode)
-    def _prev_occurence(event: E) -> None:
+    def _prev_occurrence(event: E) -> None:
         """
         Go to previous occurrence of this word.
         """
@@ -1042,7 +1063,7 @@ def load_vi_bindings() -> KeyBindingsBase:
         b.apply_search(search_state, count=event.arg, include_current_position=False)
 
     @handle("*", filter=vi_navigation_mode)
-    def _next_occurance(event: E) -> None:
+    def _next_occurrence(event: E) -> None:
         """
         Go to next occurrence of this word.
         """
@@ -1335,7 +1356,7 @@ def load_vi_bindings() -> KeyBindingsBase:
         )
 
     def create_ci_ca_handles(
-        ci_start: str, ci_end: str, inner: bool, key: Optional[str] = None
+        ci_start: str, ci_end: str, inner: bool, key: str | None = None
     ) -> None:
         # TODO: 'dat', 'dit', (tags (like xml)
         """
@@ -1410,7 +1431,7 @@ def load_vi_bindings() -> KeyBindingsBase:
         return TextObject(index)
 
     @text_object("f", Keys.Any)
-    def _next_occurence(event: E) -> TextObject:
+    def _find_next_occurrence(event: E) -> TextObject:
         """
         Go to next occurrence of character. Typing 'fx' will move the
         cursor to the next occurrence of character. 'x'.
@@ -1425,7 +1446,7 @@ def load_vi_bindings() -> KeyBindingsBase:
             return TextObject(0)
 
     @text_object("F", Keys.Any)
-    def _previous_occurance(event: E) -> TextObject:
+    def _find_previous_occurrence(event: E) -> TextObject:
         """
         Go to previous occurrence of character. Typing 'Fx' will move the
         cursor to the previous occurrence of character. 'x'.
@@ -1473,7 +1494,7 @@ def load_vi_bindings() -> KeyBindingsBase:
             """
             Repeat the last 'f'/'F'/'t'/'T' command.
             """
-            pos: Optional[int] = 0
+            pos: int | None = 0
             vi_state = event.app.vi_state
 
             type = TextObjectType.EXCLUSIVE
@@ -2068,10 +2089,6 @@ def load_vi_bindings() -> KeyBindingsBase:
         """
         event.app.vi_state.waiting_for_digraph = True
 
-    @Condition
-    def digraph_symbol_1_given() -> bool:
-        return get_app().vi_state.digraph_symbol1 is not None
-
     @handle(Keys.Any, filter=vi_digraph_mode & ~digraph_symbol_1_given)
     def _digraph1(event: E) -> None:
         """
@@ -2086,7 +2103,7 @@ def load_vi_bindings() -> KeyBindingsBase:
         """
         try:
             # Lookup.
-            code: Tuple[str, str] = (
+            code: tuple[str, str] = (
                 event.app.vi_state.digraph_symbol1 or "",
                 event.data,
             )
@@ -2159,7 +2176,7 @@ def load_vi_bindings() -> KeyBindingsBase:
 
         # Expand macro (which is a string in the register), in individual keys.
         # Use vt100 parser for this.
-        keys: List[KeyPress] = []
+        keys: list[KeyPress] = []
 
         parser = Vt100Parser(keys.append)
         parser.feed(macro.text)
@@ -2176,11 +2193,6 @@ def load_vi_search_bindings() -> KeyBindingsBase:
     key_bindings = KeyBindings()
     handle = key_bindings.add
     from . import search
-
-    @Condition
-    def search_buffer_is_empty() -> bool:
-        "Returns True when the search buffer is empty."
-        return get_app().current_buffer.text == ""
 
     # Vi-style forward search.
     handle(

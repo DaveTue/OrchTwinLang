@@ -1,0 +1,5 @@
+networkx
+matplotlib
+fmpy
+matlabengine==23.2.1
+

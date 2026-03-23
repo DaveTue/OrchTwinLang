@@ -2,8 +2,11 @@
 Input validation for a `Buffer`.
 (Validators will be called before accepting input.)
 """
+
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
-from typing import Callable, Optional
+from typing import Callable
 
 from prompt_toolkit.eventloop import run_in_executor_with_context
 
@@ -34,11 +37,7 @@ class ValidationError(Exception):
         self.message = message
 
     def __repr__(self) -> str:
-        return "{}(cursor_position={!r}, message={!r})".format(
-            self.__class__.__name__,
-            self.cursor_position,
-            self.message,
-        )
+        return f"{self.__class__.__name__}(cursor_position={self.cursor_position!r}, message={self.message!r})"
 
 
 class Validator(metaclass=ABCMeta):
@@ -81,7 +80,7 @@ class Validator(metaclass=ABCMeta):
         validate_func: Callable[[str], bool],
         error_message: str = "Invalid input",
         move_cursor_to_end: bool = False,
-    ) -> "Validator":
+    ) -> Validator:
         """
         Create a validator from a simple validate callable. E.g.:
 
@@ -108,7 +107,6 @@ class _ValidatorFromCallable(Validator):
     def __init__(
         self, func: Callable[[str], bool], error_message: str, move_cursor_to_end: bool
     ) -> None:
-
         self.func = func
         self.error_message = error_message
         self.move_cursor_to_end = move_cursor_to_end
@@ -182,7 +180,7 @@ class DynamicValidator(Validator):
     :param get_validator: Callable that returns a :class:`.Validator` instance.
     """
 
-    def __init__(self, get_validator: Callable[[], Optional[Validator]]) -> None:
+    def __init__(self, get_validator: Callable[[], Validator | None]) -> None:
         self.get_validator = get_validator
 
     def validate(self, document: Document) -> None:

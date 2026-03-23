@@ -1,19 +1,16 @@
 """
 Tools for running functions on the terminal above the current application or prompt.
 """
-import sys
+
+from __future__ import annotations
+
 from asyncio import Future, ensure_future
+from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Awaitable, Callable, TypeVar
 
 from prompt_toolkit.eventloop import run_in_executor_with_context
 
 from .current import get_app_or_none
-
-if sys.version_info >= (3, 7):
-    from contextlib import asynccontextmanager
-else:
-    from prompt_toolkit.eventloop.async_context_manager import asynccontextmanager
-
 
 __all__ = [
     "run_in_terminal",
@@ -114,4 +111,7 @@ async def in_terminal(render_cli_done: bool = False) -> AsyncGenerator[None, Non
             app._request_absolute_cursor_position()
             app._redraw()
         finally:
-            new_run_in_terminal_f.set_result(None)
+            # (Check for `.done()`, because it can be that this future was
+            # cancelled.)
+            if not new_run_in_terminal_f.done():
+                new_run_in_terminal_f.set_result(None)

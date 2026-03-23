@@ -4,18 +4,12 @@ Adaptor classes for using Pygments lexers within prompt_toolkit.
 This includes syntax synchronization code, so that we don't have to start
 lexing at the beginning of a document, when displaying a very large text.
 """
+
+from __future__ import annotations
+
 import re
 from abc import ABCMeta, abstractmethod
-from typing import (
-    TYPE_CHECKING,
-    Callable,
-    Dict,
-    Generator,
-    Iterable,
-    Optional,
-    Tuple,
-    Type,
-)
+from typing import TYPE_CHECKING, Callable, Dict, Generator, Iterable, Tuple
 
 from prompt_toolkit.document import Document
 from prompt_toolkit.filters import FilterOrBool, to_filter
@@ -38,7 +32,7 @@ __all__ = [
 
 class SyntaxSync(metaclass=ABCMeta):
     """
-    Syntax synchroniser. This is a tool that finds a start position for the
+    Syntax synchronizer. This is a tool that finds a start position for the
     lexer. This is especially important when editing big documents; we don't
     want to start the highlighting by running the lexer from the beginning of
     the file. That is very slow when editing.
@@ -47,7 +41,7 @@ class SyntaxSync(metaclass=ABCMeta):
     @abstractmethod
     def get_sync_start_position(
         self, document: Document, lineno: int
-    ) -> Tuple[int, int]:
+    ) -> tuple[int, int]:
         """
         Return the position from where we can start lexing as a (row, column)
         tuple.
@@ -65,7 +59,7 @@ class SyncFromStart(SyntaxSync):
 
     def get_sync_start_position(
         self, document: Document, lineno: int
-    ) -> Tuple[int, int]:
+    ) -> tuple[int, int]:
         return 0, 0
 
 
@@ -74,12 +68,12 @@ class RegexSync(SyntaxSync):
     Synchronize by starting at a line that matches the given regex pattern.
     """
 
-    # Never go more than this amount of lines backwards for synchronisation.
+    # Never go more than this amount of lines backwards for synchronization.
     # That would be too CPU intensive.
     MAX_BACKWARDS = 500
 
     # Start lexing at the start, if we are in the first 'n' lines and no
-    # synchronisation position was found.
+    # synchronization position was found.
     FROM_START_IF_NO_SYNC_POS_FOUND = 100
 
     def __init__(self, pattern: str) -> None:
@@ -87,7 +81,7 @@ class RegexSync(SyntaxSync):
 
     def get_sync_start_position(
         self, document: Document, lineno: int
-    ) -> Tuple[int, int]:
+    ) -> tuple[int, int]:
         """
         Scan backwards, and find a possible position to start.
         """
@@ -95,13 +89,13 @@ class RegexSync(SyntaxSync):
         lines = document.lines
 
         # Scan upwards, until we find a point where we can start the syntax
-        # synchronisation.
+        # synchronization.
         for i in range(lineno, max(-1, lineno - self.MAX_BACKWARDS), -1):
             match = pattern.match(lines[i])
             if match:
                 return i, match.start()
 
-        # No synchronisation point found. If we aren't that far from the
+        # No synchronization point found. If we aren't that far from the
         # beginning, start at the very beginning, otherwise, just try to start
         # at the current line.
         if lineno < self.FROM_START_IF_NO_SYNC_POS_FOUND:
@@ -110,7 +104,7 @@ class RegexSync(SyntaxSync):
             return lineno, 0
 
     @classmethod
-    def from_pygments_lexer_cls(cls, lexer_cls: "PygmentsLexerCls") -> "RegexSync":
+    def from_pygments_lexer_cls(cls, lexer_cls: PygmentsLexerCls) -> RegexSync:
         """
         Create a :class:`.RegexSync` instance for this Pygments lexer class.
         """
@@ -121,7 +115,7 @@ class RegexSync(SyntaxSync):
             # For HTML, start at any open/close tag definition.
             "HTML": r"<[/a-zA-Z]",
             # For javascript, start at a function.
-            "JavaScript": r"\bfunction\b"
+            "JavaScript": r"\bfunction\b",
             # TODO: Add definitions for other languages.
             #       By default, we start at every possible line.
         }
@@ -137,7 +131,7 @@ class _TokenCache(Dict[Tuple[str, ...], str]):
     ``class:pygments,pygments.A,pygments.A.B,pygments.A.B.C``
     """
 
-    def __missing__(self, key: Tuple[str, ...]) -> str:
+    def __missing__(self, key: tuple[str, ...]) -> str:
         result = "class:" + pygments_token_to_classname(key)
         self[key] = result
         return result
@@ -185,11 +179,10 @@ class PygmentsLexer(Lexer):
 
     def __init__(
         self,
-        pygments_lexer_cls: Type["PygmentsLexerCls"],
+        pygments_lexer_cls: type[PygmentsLexerCls],
         sync_from_start: FilterOrBool = True,
-        syntax_sync: Optional[SyntaxSync] = None,
+        syntax_sync: SyntaxSync | None = None,
     ) -> None:
-
         self.pygments_lexer_cls = pygments_lexer_cls
         self.sync_from_start = to_filter(sync_from_start)
 
@@ -206,7 +199,7 @@ class PygmentsLexer(Lexer):
     @classmethod
     def from_filename(
         cls, filename: str, sync_from_start: FilterOrBool = True
-    ) -> "Lexer":
+    ) -> Lexer:
         """
         Create a `Lexer` from a filename.
         """
@@ -229,20 +222,20 @@ class PygmentsLexer(Lexer):
         LineGenerator = Generator[Tuple[int, StyleAndTextTuples], None, None]
 
         # Cache of already lexed lines.
-        cache: Dict[int, StyleAndTextTuples] = {}
+        cache: dict[int, StyleAndTextTuples] = {}
 
         # Pygments generators that are currently lexing.
         # Map lexer generator to the line number.
-        line_generators: Dict[LineGenerator, int] = {}
+        line_generators: dict[LineGenerator, int] = {}
 
         def get_syntax_sync() -> SyntaxSync:
-            "The Syntax synchronisation object that we currently use."
+            "The Syntax synchronization object that we currently use."
             if self.sync_from_start():
                 return SyncFromStart()
             else:
                 return self.syntax_sync
 
-        def find_closest_generator(i: int) -> Optional[LineGenerator]:
+        def find_closest_generator(i: int) -> LineGenerator | None:
             "Return a generator close to line 'i', or None if none was found."
             for generator, lineno in line_generators.items():
                 if lineno < i and i - lineno < self.REUSE_GENERATOR_MAX_DISTANCE:
@@ -255,7 +248,7 @@ class PygmentsLexer(Lexer):
             Each iteration it yields a (line_number, [(style_str, text), ...]) tuple.
             """
 
-            def get_text_fragments() -> Iterable[Tuple[str, str]]:
+            def get_text_fragments() -> Iterable[tuple[str, str]]:
                 text = "\n".join(document.lines[start_lineno:])[column:]
 
                 # We call `get_text_fragments_unprocessed`, because `get_tokens` will
@@ -279,7 +272,7 @@ class PygmentsLexer(Lexer):
                 return generator
 
             # No generator found. Determine starting point for the syntax
-            # synchronisation first.
+            # synchronization first.
 
             # Go at least x lines back. (Make scrolling upwards more
             # efficient.)
@@ -299,7 +292,7 @@ class PygmentsLexer(Lexer):
                 generator = create_line_generator(row, column)
 
             # If the column is not 0, ignore the first line. (Which is
-            # incomplete. This happens when the synchronisation algorithm tells
+            # incomplete. This happens when the synchronization algorithm tells
             # us to start parsing in the middle of a line.)
             if column:
                 next(generator)
@@ -324,7 +317,7 @@ class PygmentsLexer(Lexer):
                         # Remove the next item from the cache.
                         # (It could happen that it's already there, because of
                         # another generator that started filling these lines,
-                        # but we want to synchronise these lines with the
+                        # but we want to synchronize these lines with the
                         # current lexer's state.)
                         if num + 1 in cache:
                             del cache[num + 1]

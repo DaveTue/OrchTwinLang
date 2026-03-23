@@ -7,8 +7,7 @@ the grid are referenced by `SubplotSpec`\s.
 
 Often, users need not access this module directly, and can use higher-level
 methods like `~.pyplot.subplots`, `~.pyplot.subplot_mosaic` and
-`~.Figure.subfigures`. See the tutorial
-:doc:`/tutorials/intermediate/arranging_axes` for a guide.
+`~.Figure.subfigures`. See the tutorial :ref:`arranging_axes` for a guide.
 """
 
 import copy
@@ -56,9 +55,9 @@ class GridSpecBase:
         self.set_width_ratios(width_ratios)
 
     def __repr__(self):
-        height_arg = (', height_ratios=%r' % (self._row_height_ratios,)
+        height_arg = (f', height_ratios={self._row_height_ratios!r}'
                       if len(set(self._row_height_ratios)) != 1 else '')
-        width_arg = (', width_ratios=%r' % (self._col_width_ratios,)
+        width_arg = (f', width_ratios={self._col_width_ratios!r}'
                      if len(set(self._col_width_ratios)) != 1 else '')
         return '{clsname}({nrows}, {ncols}{optionals})'.format(
             clsname=self.__class__.__name__,
@@ -142,8 +141,7 @@ class GridSpecBase:
         """
         return self._row_height_ratios
 
-    @_api.delete_parameter("3.7", "raw")
-    def get_grid_positions(self, fig, raw=False):
+    def get_grid_positions(self, fig):
         """
         Return the positions of the grid cells in figure coordinates.
 
@@ -152,11 +150,6 @@ class GridSpecBase:
         fig : `~matplotlib.figure.Figure`
             The figure the grid should be applied to. The subplot parameters
             (margins and spacing between subplots) are taken from *fig*.
-        raw : bool, default: False
-            If *True*, the subplot parameters of the figure are not taken
-            into account. The grid spans the range [0, 1] in both directions
-            without margins and there is no space between grid cells. This is
-            used for constrained_layout.
 
         Returns
         -------
@@ -165,22 +158,13 @@ class GridSpecBase:
             figure coordinates.
         """
         nrows, ncols = self.get_geometry()
-
-        if raw:
-            left = 0.
-            right = 1.
-            bottom = 0.
-            top = 1.
-            wspace = 0.
-            hspace = 0.
-        else:
-            subplot_params = self.get_subplot_params(fig)
-            left = subplot_params.left
-            right = subplot_params.right
-            bottom = subplot_params.bottom
-            top = subplot_params.top
-            wspace = subplot_params.wspace
-            hspace = subplot_params.hspace
+        subplot_params = self.get_subplot_params(fig)
+        left = subplot_params.left
+        right = subplot_params.right
+        bottom = subplot_params.bottom
+        top = subplot_params.top
+        wspace = subplot_params.wspace
+        hspace = subplot_params.hspace
         tot_width = right - left
         tot_height = top - bottom
 
@@ -211,8 +195,8 @@ class GridSpecBase:
         or create a new one
         """
         for ax in figure.get_axes():
-            if hasattr(ax, 'get_subplotspec'):
-                gs = ax.get_subplotspec().get_gridspec()
+            gs = ax.get_gridspec()
+            if gs is not None:
                 if hasattr(gs, 'get_topmost_subplotspec'):
                     # This is needed for colorbar gridspec layouts.
                     # This is probably OK because this whole logic tree
@@ -276,28 +260,19 @@ class GridSpecBase:
             raise ValueError("GridSpec.subplots() only works for GridSpecs "
                              "created with a parent figure")
 
-        if isinstance(sharex, bool):
+        if not isinstance(sharex, str):
             sharex = "all" if sharex else "none"
-        if isinstance(sharey, bool):
+        if not isinstance(sharey, str):
             sharey = "all" if sharey else "none"
-        # This check was added because it is very easy to type
-        # `subplots(1, 2, 1)` when `subplot(1, 2, 1)` was intended.
-        # In most cases, no error will ever occur, but mysterious behavior
-        # will result because what was intended to be the subplot index is
-        # instead treated as a bool for sharex.  This check should go away
-        # once sharex becomes kwonly.
-        if isinstance(sharex, Integral):
-            _api.warn_external(
-                "sharex argument to subplots() was an integer.  Did you "
-                "intend to use subplot() (without 's')?")
-        _api.check_in_list(["all", "row", "col", "none"],
+
+        _api.check_in_list(["all", "row", "col", "none", False, True],
                            sharex=sharex, sharey=sharey)
         if subplot_kw is None:
             subplot_kw = {}
         # don't mutate kwargs passed by user...
         subplot_kw = subplot_kw.copy()
 
-        # Create array to hold all axes.
+        # Create array to hold all Axes.
         axarr = np.empty((self._nrows, self._ncols), dtype=object)
         for row in range(self._nrows):
             for col in range(self._ncols):
@@ -311,10 +286,10 @@ class GridSpecBase:
         # turn off redundant tick labeling
         if sharex in ["col", "all"]:
             for ax in axarr.flat:
-                ax._label_outer_xaxis(check_patch=True)
+                ax._label_outer_xaxis(skip_non_rectangular_axes=True)
         if sharey in ["row", "all"]:
             for ax in axarr.flat:
-                ax._label_outer_yaxis(check_patch=True)
+                ax._label_outer_yaxis(skip_non_rectangular_axes=True)
 
         if squeeze:
             # Discarding unneeded dimensions that equal 1.  If we only have one
@@ -330,7 +305,7 @@ class GridSpec(GridSpecBase):
     A grid layout to place subplots within a figure.
 
     The location of the grid cells is determined in a similar way to
-    `~.figure.SubplotParams` using *left*, *right*, *top*, *bottom*, *wspace*
+    `.SubplotParams` using *left*, *right*, *top*, *bottom*, *wspace*
     and *hspace*.
 
     Indexing a GridSpec instance returns a `.SubplotSpec`.
@@ -413,11 +388,11 @@ class GridSpec(GridSpecBase):
                 raise AttributeError(f"{k} is an unknown keyword")
         for figmanager in _pylab_helpers.Gcf.figs.values():
             for ax in figmanager.canvas.figure.axes:
-                if isinstance(ax, mpl.axes.SubplotBase):
+                if ax.get_subplotspec() is not None:
                     ss = ax.get_subplotspec().get_topmost_subplotspec()
                     if ss.get_gridspec() == self:
-                        ax._set_position(
-                            ax.get_subplotspec().get_position(ax.figure))
+                        fig = ax.get_figure(root=False)
+                        ax._set_position(ax.get_subplotspec().get_position(fig))
 
     def get_subplot_params(self, figure=None):
         """
@@ -428,11 +403,13 @@ class GridSpec(GridSpecBase):
         - non-*None* attributes of the GridSpec
         - the provided *figure*
         - :rc:`figure.subplot.*`
+
+        Note that the ``figure`` attribute of the GridSpec is always ignored.
         """
         if figure is None:
             kw = {k: mpl.rcParams["figure.subplot."+k]
                   for k in self._AllowedKeys}
-            subplotpars = mpl.figure.SubplotParams(**kw)
+            subplotpars = SubplotParams(**kw)
         else:
             subplotpars = copy.copy(figure.subplotpars)
 
@@ -456,6 +433,10 @@ class GridSpec(GridSpecBase):
 
         Parameters
         ----------
+        figure : `.Figure`
+            The figure.
+        renderer :  `.RendererBase` subclass, optional
+            The renderer to be used.
         pad : float
             Padding between the figure edge and the edges of subplots, as a
             fraction of the font-size.
@@ -503,7 +484,12 @@ class GridSpecFromSubplotSpec(GridSpecBase):
         """
         self._wspace = wspace
         self._hspace = hspace
-        self._subplot_spec = subplot_spec
+        if isinstance(subplot_spec, SubplotSpec):
+            self._subplot_spec = subplot_spec
+        else:
+            raise TypeError(
+                            "subplot_spec must be type SubplotSpec, "
+                            "usually from GridSpec, or axes.get_subplotspec.")
         self.figure = self._subplot_spec.get_gridspec().figure
         super().__init__(nrows, ncols,
                          width_ratios=width_ratios,
@@ -521,9 +507,9 @@ class GridSpecFromSubplotSpec(GridSpecBase):
         figbox = self._subplot_spec.get_position(figure)
         left, bottom, right, top = figbox.extents
 
-        return mpl.figure.SubplotParams(left=left, right=right,
-                                        bottom=bottom, top=top,
-                                        wspace=wspace, hspace=hspace)
+        return SubplotParams(left=left, right=right,
+                             bottom=bottom, top=top,
+                             wspace=wspace, hspace=hspace)
 
     def get_topmost_subplotspec(self):
         """
@@ -587,8 +573,7 @@ class SubplotSpec:
         elif len(args) == 3:
             rows, cols, num = args
         else:
-            raise TypeError(f"subplot() takes 1 or 3 positional arguments but "
-                            f"{len(args)} were given")
+            raise _api.nargs_error("subplot", takes="1 or 3", given=len(args))
 
         gs = GridSpec._check_gridspec_exists(figure, rows, cols)
         if gs is None:
@@ -602,7 +587,9 @@ class SubplotSpec:
         else:
             if not isinstance(num, Integral) or num < 1 or num > rows*cols:
                 raise ValueError(
-                    f"num must be 1 <= num <= {rows*cols}, not {num!r}")
+                    f"num must be an integer with 1 <= num <= {rows*cols}, "
+                    f"not {num!r}"
+                )
             i = j = num
         return gs[i-1:j]
 
@@ -739,3 +726,63 @@ class SubplotSpec:
                 fig.add_subplot(gssub[0, i])
         """
         return GridSpecFromSubplotSpec(nrows, ncols, self, **kwargs)
+
+
+class SubplotParams:
+    """
+    Parameters defining the positioning of a subplots grid in a figure.
+    """
+
+    def __init__(self, left=None, bottom=None, right=None, top=None,
+                 wspace=None, hspace=None):
+        """
+        Defaults are given by :rc:`figure.subplot.[name]`.
+
+        Parameters
+        ----------
+        left : float
+            The position of the left edge of the subplots,
+            as a fraction of the figure width.
+        right : float
+            The position of the right edge of the subplots,
+            as a fraction of the figure width.
+        bottom : float
+            The position of the bottom edge of the subplots,
+            as a fraction of the figure height.
+        top : float
+            The position of the top edge of the subplots,
+            as a fraction of the figure height.
+        wspace : float
+            The width of the padding between subplots,
+            as a fraction of the average Axes width.
+        hspace : float
+            The height of the padding between subplots,
+            as a fraction of the average Axes height.
+        """
+        for key in ["left", "bottom", "right", "top", "wspace", "hspace"]:
+            setattr(self, key, mpl.rcParams[f"figure.subplot.{key}"])
+        self.update(left, bottom, right, top, wspace, hspace)
+
+    def update(self, left=None, bottom=None, right=None, top=None,
+               wspace=None, hspace=None):
+        """
+        Update the dimensions of the passed parameters. *None* means unchanged.
+        """
+        if ((left if left is not None else self.left)
+                >= (right if right is not None else self.right)):
+            raise ValueError('left cannot be >= right')
+        if ((bottom if bottom is not None else self.bottom)
+                >= (top if top is not None else self.top)):
+            raise ValueError('bottom cannot be >= top')
+        if left is not None:
+            self.left = left
+        if right is not None:
+            self.right = right
+        if bottom is not None:
+            self.bottom = bottom
+        if top is not None:
+            self.top = top
+        if wspace is not None:
+            self.wspace = wspace
+        if hspace is not None:
+            self.hspace = hspace

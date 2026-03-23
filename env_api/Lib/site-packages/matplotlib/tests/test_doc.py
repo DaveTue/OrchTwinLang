@@ -9,7 +9,8 @@ def test_sphinx_gallery_example_header():
     EXAMPLE_HEADER, this test will start to fail. In that case, please update
     the monkey-patching of EXAMPLE_HEADER in conf.py.
     """
-    gen_rst = pytest.importorskip('sphinx_gallery.gen_rst')
+    pytest.importorskip('sphinx_gallery', minversion='0.16.0')
+    from sphinx_gallery import gen_rst
 
     EXAMPLE_HEADER = """
 .. DO NOT EDIT.
@@ -23,8 +24,8 @@ def test_sphinx_gallery_example_header():
     .. note::
         :class: sphx-glr-download-link-note
 
-        Click :ref:`here <sphx_glr_download_{1}>`
-        to download the full example code{2}
+        :ref:`Go to the end <sphx_glr_download_{1}>`
+        to download the full example code.{2}
 
 .. rst-class:: sphx-glr-example-title
 

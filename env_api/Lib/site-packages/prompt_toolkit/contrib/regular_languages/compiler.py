@@ -38,10 +38,12 @@ Partial matches are possible::
     m.variables().get('operator2')  # Returns "add"
 
 """
+
+from __future__ import annotations
+
 import re
-from typing import Callable, Dict, Iterable, Iterator, List
+from typing import Callable, Dict, Iterable, Iterator, Pattern, TypeVar, overload
 from typing import Match as RegexMatch
-from typing import Optional, Pattern, Tuple
 
 from .regex_parser import (
     AnyNode,
@@ -55,9 +57,7 @@ from .regex_parser import (
     tokenize_regex,
 )
 
-__all__ = [
-    "compile",
-]
+__all__ = ["compile", "Match", "Variables"]
 
 
 # Name of the named group in the regex, matching trailing input.
@@ -81,28 +81,27 @@ class _CompiledGrammar:
     def __init__(
         self,
         root_node: Node,
-        escape_funcs: Optional[EscapeFuncDict] = None,
-        unescape_funcs: Optional[EscapeFuncDict] = None,
+        escape_funcs: EscapeFuncDict | None = None,
+        unescape_funcs: EscapeFuncDict | None = None,
     ) -> None:
-
         self.root_node = root_node
         self.escape_funcs = escape_funcs or {}
         self.unescape_funcs = unescape_funcs or {}
 
         #: Dictionary that will map the regex names to Node instances.
-        self._group_names_to_nodes: Dict[
+        self._group_names_to_nodes: dict[
             str, str
         ] = {}  # Maps regex group names to varnames.
         counter = [0]
 
         def create_group_func(node: Variable) -> str:
-            name = "n%s" % counter[0]
+            name = f"n{counter[0]}"
             self._group_names_to_nodes[name] = node.varname
             counter[0] += 1
             return name
 
         # Compile regex strings.
-        self._re_pattern = "^%s$" % self._transform(root_node, create_group_func)
+        self._re_pattern = f"^{self._transform(root_node, create_group_func)}$"
         self._re_prefix_patterns = list(
             self._transform_prefix(root_node, create_group_func)
         )
@@ -153,7 +152,7 @@ class _CompiledGrammar:
         def transform(node: Node) -> str:
             # Turn `AnyNode` into an OR.
             if isinstance(node, AnyNode):
-                return "(?:%s)" % "|".join(transform(c) for c in node.children)
+                return "(?:{})".format("|".join(transform(c) for c in node.children))
 
             # Concatenate a `NodeSequence`
             elif isinstance(node, NodeSequence):
@@ -169,10 +168,7 @@ class _CompiledGrammar:
 
             # A `Variable` wraps the children into a named group.
             elif isinstance(node, Variable):
-                return "(?P<{}>{})".format(
-                    create_group_func(node),
-                    transform(node.childnode),
-                )
+                return f"(?P<{create_group_func(node)}>{transform(node.childnode)})"
 
             # `Repeat`.
             elif isinstance(node, Repeat):
@@ -314,11 +310,11 @@ class _CompiledGrammar:
                     yield "".join(result)
 
             elif isinstance(node, Regex):
-                yield "(?:%s)?" % node.regex
+                yield f"(?:{node.regex})?"
 
             elif isinstance(node, Lookahead):
                 if node.negative:
-                    yield "(?!%s)" % cls._transform(node.childnode, create_group_func)
+                    yield f"(?!{cls._transform(node.childnode, create_group_func)})"
                 else:
                     # Not sure what the correct semantics are in this case.
                     # (Probably it's not worth implementing this.)
@@ -352,12 +348,12 @@ class _CompiledGrammar:
                         )
 
             else:
-                raise TypeError("Got %r" % node)
+                raise TypeError(f"Got {node!r}")
 
         for r in transform(root_node):
-            yield "^(?:%s)$" % r
+            yield f"^(?:{r})$"
 
-    def match(self, string: str) -> Optional["Match"]:
+    def match(self, string: str) -> Match | None:
         """
         Match the string with the grammar.
         Returns a :class:`Match` instance or `None` when the input doesn't match the grammar.
@@ -372,7 +368,7 @@ class _CompiledGrammar:
             )
         return None
 
-    def match_prefix(self, string: str) -> Optional["Match"]:
+    def match_prefix(self, string: str) -> Match | None:
         """
         Do a partial match of the string with the grammar. The returned
         :class:`Match` instance can contain multiple representations of the
@@ -405,21 +401,21 @@ class Match:
     def __init__(
         self,
         string: str,
-        re_matches: List[Tuple[Pattern[str], RegexMatch[str]]],
-        group_names_to_nodes: Dict[str, str],
-        unescape_funcs: Dict[str, Callable[[str], str]],
+        re_matches: list[tuple[Pattern[str], RegexMatch[str]]],
+        group_names_to_nodes: dict[str, str],
+        unescape_funcs: dict[str, Callable[[str], str]],
     ):
         self.string = string
         self._re_matches = re_matches
         self._group_names_to_nodes = group_names_to_nodes
         self._unescape_funcs = unescape_funcs
 
-    def _nodes_to_regs(self) -> List[Tuple[str, Tuple[int, int]]]:
+    def _nodes_to_regs(self) -> list[tuple[str, tuple[int, int]]]:
         """
         Return a list of (varname, reg) tuples.
         """
 
-        def get_tuples() -> Iterable[Tuple[str, Tuple[int, int]]]:
+        def get_tuples() -> Iterable[tuple[str, tuple[int, int]]]:
             for r, re_match in self._re_matches:
                 for group_name, group_index in r.groupindex.items():
                     if group_name != _INVALID_TRAILING_INPUT:
@@ -430,15 +426,15 @@ class Match:
 
         return list(get_tuples())
 
-    def _nodes_to_values(self) -> List[Tuple[str, str, Tuple[int, int]]]:
+    def _nodes_to_values(self) -> list[tuple[str, str, tuple[int, int]]]:
         """
         Returns list of (Node, string_value) tuples.
         """
 
-        def is_none(sl: Tuple[int, int]) -> bool:
+        def is_none(sl: tuple[int, int]) -> bool:
             return sl[0] == -1 and sl[1] == -1
 
-        def get(sl: Tuple[int, int]) -> str:
+        def get(sl: tuple[int, int]) -> str:
             return self.string[sl[0] : sl[1]]
 
         return [
@@ -451,7 +447,7 @@ class Match:
         unwrapper = self._unescape_funcs.get(varname)
         return unwrapper(value) if unwrapper else value
 
-    def variables(self) -> "Variables":
+    def variables(self) -> Variables:
         """
         Returns :class:`Variables` instance.
         """
@@ -459,13 +455,13 @@ class Match:
             [(k, self._unescape(k, v), sl) for k, v, sl in self._nodes_to_values()]
         )
 
-    def trailing_input(self) -> Optional["MatchVariable"]:
+    def trailing_input(self) -> MatchVariable | None:
         """
         Get the `MatchVariable` instance, representing trailing input, if there is any.
         "Trailing input" is input at the end that does not match the grammar anymore, but
         when this is removed from the end of the input, the input would be a valid string.
         """
-        slices: List[Tuple[int, int]] = []
+        slices: list[tuple[int, int]] = []
 
         # Find all regex group for the name _INVALID_TRAILING_INPUT.
         for r, re_match in self._re_matches:
@@ -481,7 +477,7 @@ class Match:
             return MatchVariable("<trailing_input>", value, slice)
         return None
 
-    def end_nodes(self) -> Iterable["MatchVariable"]:
+    def end_nodes(self) -> Iterable[MatchVariable]:
         """
         Yields `MatchVariable` instances for all the nodes having their end
         position at the end of the input string.
@@ -493,8 +489,11 @@ class Match:
                 yield MatchVariable(varname, value, (reg[0], reg[1]))
 
 
+_T = TypeVar("_T")
+
+
 class Variables:
-    def __init__(self, tuples: List[Tuple[str, str, Tuple[int, int]]]) -> None:
+    def __init__(self, tuples: list[tuple[str, str, tuple[int, int]]]) -> None:
         #: List of (varname, value, slice) tuples.
         self._tuples = tuples
 
@@ -504,17 +503,23 @@ class Variables:
             ", ".join(f"{k}={v!r}" for k, v, _ in self._tuples),
         )
 
-    def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
+    @overload
+    def get(self, key: str) -> str | None: ...
+
+    @overload
+    def get(self, key: str, default: str | _T) -> str | _T: ...
+
+    def get(self, key: str, default: str | _T | None = None) -> str | _T | None:
         items = self.getall(key)
         return items[0] if items else default
 
-    def getall(self, key: str) -> List[str]:
+    def getall(self, key: str) -> list[str]:
         return [v for k, v, _ in self._tuples if k == key]
 
-    def __getitem__(self, key: str) -> Optional[str]:
+    def __getitem__(self, key: str) -> str | None:
         return self.get(key)
 
-    def __iter__(self) -> Iterator["MatchVariable"]:
+    def __iter__(self) -> Iterator[MatchVariable]:
         """
         Yield `MatchVariable` instances.
         """
@@ -532,7 +537,7 @@ class MatchVariable:
                   in the input string.
     """
 
-    def __init__(self, varname: str, value: str, slice: Tuple[int, int]) -> None:
+    def __init__(self, varname: str, value: str, slice: tuple[int, int]) -> None:
         self.varname = varname
         self.value = value
         self.slice = slice
@@ -546,8 +551,8 @@ class MatchVariable:
 
 def compile(
     expression: str,
-    escape_funcs: Optional[EscapeFuncDict] = None,
-    unescape_funcs: Optional[EscapeFuncDict] = None,
+    escape_funcs: EscapeFuncDict | None = None,
+    unescape_funcs: EscapeFuncDict | None = None,
 ) -> _CompiledGrammar:
     """
     Compile grammar (given as regex string), returning a `CompiledGrammar`
@@ -562,8 +567,8 @@ def compile(
 
 def _compile_from_parse_tree(
     root_node: Node,
-    escape_funcs: Optional[EscapeFuncDict] = None,
-    unescape_funcs: Optional[EscapeFuncDict] = None,
+    escape_funcs: EscapeFuncDict | None = None,
+    unescape_funcs: EscapeFuncDict | None = None,
 ) -> _CompiledGrammar:
     """
     Compile grammar (given as parse tree), returning a `CompiledGrammar`

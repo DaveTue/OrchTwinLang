@@ -1,14 +1,12 @@
-"""
-"""
+""" """
+
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
-from typing import AsyncGenerator, Callable, Iterable, List, Optional, Sequence
+from typing import AsyncGenerator, Callable, Iterable, Sequence
 
 from prompt_toolkit.document import Document
-from prompt_toolkit.eventloop import (
-    aclosing,
-    generator_to_async_generator,
-    get_event_loop,
-)
+from prompt_toolkit.eventloop import aclosing, generator_to_async_generator
 from prompt_toolkit.filters import FilterOrBool, to_filter
 from prompt_toolkit.formatted_text import AnyFormattedText, StyleAndTextTuples
 
@@ -45,12 +43,11 @@ class Completion:
         self,
         text: str,
         start_position: int = 0,
-        display: Optional[AnyFormattedText] = None,
-        display_meta: Optional[AnyFormattedText] = None,
+        display: AnyFormattedText | None = None,
+        display_meta: AnyFormattedText | None = None,
         style: str = "",
         selected_style: str = "",
     ) -> None:
-
         from prompt_toolkit.formatted_text import to_formatted_text
 
         self.text = text
@@ -69,18 +66,9 @@ class Completion:
 
     def __repr__(self) -> str:
         if isinstance(self.display, str) and self.display == self.text:
-            return "{}(text={!r}, start_position={!r})".format(
-                self.__class__.__name__,
-                self.text,
-                self.start_position,
-            )
+            return f"{self.__class__.__name__}(text={self.text!r}, start_position={self.start_position!r})"
         else:
-            return "{}(text={!r}, start_position={!r}, display={!r})".format(
-                self.__class__.__name__,
-                self.text,
-                self.start_position,
-                self.display,
-            )
+            return f"{self.__class__.__name__}(text={self.text!r}, start_position={self.start_position!r}, display={self.display!r})"
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Completion):
@@ -116,7 +104,7 @@ class Completion:
 
         return fragment_list_to_text(self.display_meta)
 
-    def new_completion_from_position(self, position: int) -> "Completion":
+    def new_completion_from_position(self, position: int) -> Completion:
         """
         (Only for internal use!)
         Get a new completion by splitting this one. Used by `Application` when
@@ -159,11 +147,7 @@ class CompleteEvent:
         self.completion_requested = completion_requested
 
     def __repr__(self) -> str:
-        return "{}(text_inserted={!r}, completion_requested={!r})".format(
-            self.__class__.__name__,
-            self.text_inserted,
-            self.completion_requested,
-        )
+        return f"{self.__class__.__name__}(text_inserted={self.text_inserted!r}, completion_requested={self.completion_requested!r})"
 
 
 class Completer(metaclass=ABCMeta):
@@ -272,7 +256,7 @@ class ThreadedCompleter(Completer):
         # def get_all_in_thread() -> List[Completion]:
         #   return list(self.get_completions(document, complete_event))
 
-        # completions = await get_event_loop().run_in_executor(None, get_all_in_thread)
+        # completions = await get_running_loop().run_in_executor(None, get_all_in_thread)
         # for completion in completions:
         #   yield completion
 
@@ -309,7 +293,7 @@ class DynamicCompleter(Completer):
     :param get_completer: Callable that returns a :class:`.Completer` instance.
     """
 
-    def __init__(self, get_completer: Callable[[], Optional[Completer]]) -> None:
+    def __init__(self, get_completer: Callable[[], Completer | None]) -> None:
         self.get_completer = get_completer
 
     def get_completions(
@@ -358,7 +342,6 @@ class ConditionalCompleter(Completer):
     async def get_completions_async(
         self, document: Document, complete_event: CompleteEvent
     ) -> AsyncGenerator[Completion, None]:
-
         # Get all completions in a non-blocking way.
         if self.filter():
             async with aclosing(
@@ -386,7 +369,6 @@ class _MergedCompleter(Completer):
     async def get_completions_async(
         self, document: Document, complete_event: CompleteEvent
     ) -> AsyncGenerator[Completion, None]:
-
         # Get all completions from the other completers in a non-blocking way.
         for completer in self.completers:
             async with aclosing(
@@ -420,6 +402,7 @@ def get_common_complete_suffix(
     """
     Return the common prefix for all completions.
     """
+
     # Take only completions that don't change the text before the cursor.
     def doesnt_change_before_cursor(completion: Completion) -> bool:
         end = completion.text[: -completion.start_position]

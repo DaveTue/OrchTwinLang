@@ -5,8 +5,11 @@ For the key bindings implementation with attached filters, check
 `prompt_toolkit.key_binding.bindings.search`. (Use these for new key bindings
 instead of calling these function directly.)
 """
+
+from __future__ import annotations
+
 from enum import Enum
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING
 
 from .application.current import get_app
 from .filters import FilterOrBool, is_searching, to_filter
@@ -52,20 +55,14 @@ class SearchState:
         direction: SearchDirection = SearchDirection.FORWARD,
         ignore_case: FilterOrBool = False,
     ) -> None:
-
         self.text = text
         self.direction = direction
         self.ignore_case = to_filter(ignore_case)
 
     def __repr__(self) -> str:
-        return "{}({!r}, direction={!r}, ignore_case={!r})".format(
-            self.__class__.__name__,
-            self.text,
-            self.direction,
-            self.ignore_case,
-        )
+        return f"{self.__class__.__name__}({self.text!r}, direction={self.direction!r}, ignore_case={self.ignore_case!r})"
 
-    def __invert__(self) -> "SearchState":
+    def __invert__(self) -> SearchState:
         """
         Create a new SearchState where backwards becomes forwards and the other
         way around.
@@ -81,7 +78,7 @@ class SearchState:
 
 
 def start_search(
-    buffer_control: Optional["BufferControl"] = None,
+    buffer_control: BufferControl | None = None,
     direction: SearchDirection = SearchDirection.FORWARD,
 ) -> None:
     """
@@ -119,7 +116,7 @@ def start_search(
         get_app().vi_state.input_mode = InputMode.INSERT
 
 
-def stop_search(buffer_control: Optional["BufferControl"] = None) -> None:
+def stop_search(buffer_control: BufferControl | None = None) -> None:
     """
     Stop search through the given `buffer_control`.
     """
@@ -218,8 +215,8 @@ def accept_search() -> None:
 
 
 def _get_reverse_search_links(
-    layout: "Layout",
-) -> Dict["BufferControl", "SearchBufferControl"]:
+    layout: Layout,
+) -> dict[BufferControl, SearchBufferControl]:
     """
     Return mapping from BufferControl to SearchBufferControl.
     """
