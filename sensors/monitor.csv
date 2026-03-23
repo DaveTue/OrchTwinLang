@@ -1,0 +1,6 @@
+Field,Value
+inputsNames,"temperature,sg"
+instruction_port,60000
+receiving_ports,"60001,60002"
+config,"type:freq,unit:s,occurrences_per_unit:1"
+name,monitor

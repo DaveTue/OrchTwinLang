@@ -1,0 +1,6 @@
+Field,Value
+outputsNames,temperature
+sending_port,55000
+receiving_ports,55001
+config,"type:freq,unit:s,occurrences_per_unit:1"
+name,tilt

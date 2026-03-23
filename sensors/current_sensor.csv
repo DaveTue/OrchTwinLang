@@ -1,0 +1,6 @@
+Field,Value
+outputsNames,current
+sending_port,55000
+receiving_ports,55001
+config,"type:freq,unit:s,occurrences_per_unit:5"
+name,current_sensor
