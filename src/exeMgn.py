@@ -5,8 +5,8 @@ from collections import defaultdict, deque
 import networkx as nx
 import matplotlib.pyplot as plt
 
-import src.GlOb
-import src.Comm
+import src.GlOb as GlOb
+import src.Comm as Comm
 
 logging.basicConfig(filename='loggings\\Exe.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 

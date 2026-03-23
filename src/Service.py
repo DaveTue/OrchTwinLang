@@ -1,7 +1,7 @@
 #DT_sys
-import src.Comm
-import src.exeAreas
-import src.GlOb
+import src.Comm as Comm
+import src.exeAreas as exeAreas
+import src.GlOb as GlOb
 import time
 import networkx as nx
 import matplotlib.pyplot as plt
