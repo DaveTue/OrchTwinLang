@@ -1,0 +1,8 @@
+Field,Value
+inputsNames,rawData
+outputsNames,eCurrent
+parametersNames,
+exeSchedule,1:processData
+modelName,DPCurrentSens
+type,DataProc
+model,Models.dataProcess.CurrentSens

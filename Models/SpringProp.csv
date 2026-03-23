@@ -1,0 +1,8 @@
+Field,Value
+inputsNames,R
+outputsNames,"T_coil,k"
+parametersNames,"R_25,alpha,d_wire,d_coil,N"
+exeSchedule,1:execute
+modelName,SpringProp
+type,SimModel
+model,Models.SpringProp.Model

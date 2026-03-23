@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<fmiModelDescription fmiVersion="3.0" generationDateAndTime="2025-01-07T16:34:21Z" generationTool="Simulink (R2023b)" instantiationToken="{9e479e20-1c39-a903-e541-3eb0f2eb59f5}" modelName="MassSpringMod" variableNamingConvention="structured" version="1.6">
+  <CoSimulation canBeInstantiatedOnlyOncePerProcess="true" canGetAndSetFMUState="false" canHandleVariableCommunicationStepSize="false" canSerializeFMUState="false" fixedInternalStepSize="1" hasEventMode="true" modelIdentifier="MassSpringMod"/>
+  <DefaultExperiment startTime="0" stepSize="1" stopTime="100"/>
+  <ModelVariables>
+    <Float64 causality="input" description="Force" initial="exact" name="Force" start="0" valueReference="0" variability="continuous"/>
+    <Float64 causality="output" description="DisplacementOutput" initial="calculated" name="DisplacementOutput" valueReference="1" variability="continuous"/>
+    <Float64 causality="independent" description="time" name="time" valueReference="2" variability="continuous"/>
+    <Float64 causality="parameter" description="dampingCoefficient" initial="exact" name="dampingCoefficient" start="-100" valueReference="3" variability="tunable"/>
+    <Float64 causality="parameter" description="mass" initial="exact" name="mass" start="5" valueReference="4" variability="tunable"/>
+    <Float64 causality="parameter" description="springConstant" initial="exact" name="springConstant" start="-10" valueReference="5" variability="tunable"/>
+  </ModelVariables>
+  <ModelStructure>
+    <Output valueReference="1"/>
+    <InitialUnknown valueReference="1"/>
+  </ModelStructure>
+  <Annotations>
+    <Annotation type="com.mathworks.Simulink">
+      <Simulink>
+        <ImportCompatibility FMUProduct="standalone FMU" requireMATLABOnPath="no" requireRelease="all"/>
+        <SimulinkModelInterface>
+          <Inport blockPath="MassSpringMod/Force" dataType="double" dimension="[1]" portName="Force" portNumber="1" sampleTime="[0 0]" uniquePortName="Force" unit=""/>
+          <Outport blockPath="MassSpringMod/DisplacementOutput" dataType="double" dimension="[1]" portName="DisplacementOutput" portNumber="1" sampleTime="[0 0]" uniquePortName="DisplacementOutput" unit=""/>
+        </SimulinkModelInterface>
+      </Simulink>
+    </Annotation>
+  </Annotations>
+</fmiModelDescription>

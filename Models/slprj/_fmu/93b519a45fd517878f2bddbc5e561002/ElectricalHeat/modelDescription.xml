@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<fmiModelDescription fmiVersion="2.0" generationDateAndTime="2025-01-16T21:09:25Z" generationTool="Simulink (R2023b)" guid="{5176176c-16d7-5df0-1c3b-252fbffa5812}" modelName="ElectricalHeat" numberOfEventIndicators="0" variableNamingConvention="structured" version="1.9">
+  <CoSimulation canBeInstantiatedOnlyOncePerProcess="true" canGetAndSetFMUstate="false" canHandleVariableCommunicationStepSize="false" canNotUseMemoryManagementFunctions="true" canSerializeFMUstate="false" modelIdentifier="ElectricalHeat"/>
+  <DefaultExperiment startTime="0" stepSize="1" stopTime="5"/>
+  <VendorAnnotations>
+    <Tool name="Simulink">
+      <Simulink>
+        <ImportCompatibility FMUProduct="standalone FMU" requireMATLABOnPath="no" requireRelease="all"/>
+        <SimulinkModelInterface>
+          <Inport blockPath="ElectricalHeat/I" dataType="double" dimension="[1]" portName="I" portNumber="1" sampleTime="[0 0]" uniquePortName="I" unit=""/>
+          <Outport blockPath="ElectricalHeat/Q" dataType="double" dimension="[1]" portName="Q" portNumber="1" sampleTime="[0 0]" uniquePortName="Q" unit=""/>
+          <Outport blockPath="ElectricalHeat/R" dataType="double" dimension="[1]" portName="R" portNumber="2" sampleTime="[0 0]" uniquePortName="R" unit=""/>
+        </SimulinkModelInterface>
+      </Simulink>
+    </Tool>
+  </VendorAnnotations>
+  <ModelVariables>
+    <ScalarVariable causality="input" description="I" name="I" valueReference="0" variability="continuous">
+      <Real start="0"/>
+      <!--Index = 1-->
+    </ScalarVariable>
+    <ScalarVariable causality="output" description="Q" initial="calculated" name="Q" valueReference="1" variability="continuous">
+      <Real/>
+      <!--Index = 2-->
+    </ScalarVariable>
+    <ScalarVariable causality="output" description="R" initial="calculated" name="R" valueReference="2" variability="continuous">
+      <Real/>
+      <!--Index = 3-->
+    </ScalarVariable>
+    <ScalarVariable causality="independent" description="time" name="time" valueReference="3" variability="continuous">
+      <Real/>
+      <!--Index = 4-->
+    </ScalarVariable>
+    <ScalarVariable causality="parameter" description="V" initial="exact" name="V" valueReference="4" variability="tunable">
+      <Real start="170"/>
+      <!--Index = 5-->
+    </ScalarVariable>
+  </ModelVariables>
+  <ModelStructure>
+    <Outputs>
+      <Unknown index="2"/>
+      <Unknown index="3"/>
+    </Outputs>
+    <InitialUnknowns>
+      <Unknown index="2"/>
+      <Unknown index="3"/>
+    </InitialUnknowns>
+  </ModelStructure>
+</fmiModelDescription>

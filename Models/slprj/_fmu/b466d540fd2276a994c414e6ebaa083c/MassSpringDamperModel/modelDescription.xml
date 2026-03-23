@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<fmiModelDescription fmiVersion="2.0" generationDateAndTime="2025-01-07T15:55:52Z" generationTool="Simulink (R2023b)" guid="{7d87b1b5-1b11-5f3e-347f-23fad1a9e1f7}" modelName="MassSpringDamperModel" numberOfEventIndicators="0" variableNamingConvention="structured" version="1.5">
+  <CoSimulation canBeInstantiatedOnlyOncePerProcess="false" canGetAndSetFMUstate="false" canHandleVariableCommunicationStepSize="true" canNotUseMemoryManagementFunctions="true" canSerializeFMUstate="false" modelIdentifier="MassSpringDamperModel" needsExecutionTool="true"/>
+  <LogCategories>
+    <Category description="All messages from FMU, MATLAB exceptions, and MATLAB command window." name="logAll"/>
+    <Category description="Error message from FMU or MATLAB exceptions." name="logStatusError"/>
+  </LogCategories>
+  <DefaultExperiment startTime="0" stopTime="10"/>
+  <VendorAnnotations>
+    <Tool name="Simulink">
+      <Simulink>
+        <ImportCompatibility FMUProduct="variable step FMU" requireMATLABOnPath="yes" requireRelease="R2023b"/>
+        <SimulinkProject modelName="MassSpringDamperModel" projectName=""/>
+        <SimulinkModelInterface>
+          <Inport blockPath="MassSpringDamperModel/Force" dataType="double" dimension="[1]" portName="Force" portNumber="1" sampleTime="[0 0]" tag="cosimTransformedInput_1" uniquePortName="Force" unit=""/>
+          <Outport blockPath="MassSpringDamperModel/DisplacementOutput" dataType="double" dimension="[1]" portName="DisplacementOutput" portNumber="1" sampleTime="[0 0]" tag="cosimTransformedOutput_1" uniquePortName="DisplacementOutput" unit=""/>
+        </SimulinkModelInterface>
+      </Simulink>
+    </Tool>
+  </VendorAnnotations>
+  <ModelVariables>
+    <ScalarVariable causality="input" description="Force" name="Force" valueReference="0" variability="continuous">
+      <Real start="0"/>
+      <!--Index = 1-->
+    </ScalarVariable>
+    <ScalarVariable causality="output" description="DisplacementOutput" initial="calculated" name="DisplacementOutput" valueReference="2" variability="continuous">
+      <Real/>
+      <!--Index = 2-->
+    </ScalarVariable>
+    <ScalarVariable causality="independent" description="time" name="time" valueReference="1" variability="continuous">
+      <Real/>
+      <!--Index = 3-->
+    </ScalarVariable>
+    <ScalarVariable causality="parameter" description="dampingCoefficient" initial="exact" name="dampingCoefficient" valueReference="3" variability="tunable">
+      <Real start="-100"/>
+      <!--Index = 4-->
+    </ScalarVariable>
+    <ScalarVariable causality="parameter" description="mass" initial="exact" name="mass" valueReference="4" variability="tunable">
+      <Real start="5"/>
+      <!--Index = 5-->
+    </ScalarVariable>
+    <ScalarVariable causality="parameter" description="springConstant" initial="exact" name="springConstant" valueReference="5" variability="tunable">
+      <Real start="-10"/>
+      <!--Index = 6-->
+    </ScalarVariable>
+  </ModelVariables>
+  <ModelStructure>
+    <Outputs>
+      <Unknown index="2"/>
+    </Outputs>
+    <InitialUnknowns>
+      <Unknown index="2"/>
+    </InitialUnknowns>
+  </ModelStructure>
+</fmiModelDescription>

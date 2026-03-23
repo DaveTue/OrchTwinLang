@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<fmiModelDescription fmiVersion="2.0" generationDateAndTime="2025-01-07T16:54:20Z" generationTool="Simulink (R2023b)" guid="{9e479e20-1c39-a903-e541-3eb0f2eb59f5}" modelName="MassSpringMod" numberOfEventIndicators="0" variableNamingConvention="structured" version="1.6">
+  <CoSimulation canBeInstantiatedOnlyOncePerProcess="true" canGetAndSetFMUstate="false" canHandleVariableCommunicationStepSize="false" canNotUseMemoryManagementFunctions="true" canSerializeFMUstate="false" modelIdentifier="MassSpringMod"/>
+  <DefaultExperiment startTime="0" stepSize="1" stopTime="100"/>
+  <VendorAnnotations>
+    <Tool name="Simulink">
+      <Simulink>
+        <ImportCompatibility FMUProduct="standalone FMU" requireMATLABOnPath="no" requireRelease="all"/>
+        <SimulinkModelInterface>
+          <Inport blockPath="MassSpringMod/Force" dataType="double" dimension="[1]" portName="Force" portNumber="1" sampleTime="[0 0]" uniquePortName="Force" unit=""/>
+          <Outport blockPath="MassSpringMod/DisplacementOutput" dataType="double" dimension="[1]" portName="DisplacementOutput" portNumber="1" sampleTime="[0 0]" uniquePortName="DisplacementOutput" unit=""/>
+        </SimulinkModelInterface>
+      </Simulink>
+    </Tool>
+  </VendorAnnotations>
+  <ModelVariables>
+    <ScalarVariable causality="input" description="Force" name="Force" valueReference="0" variability="continuous">
+      <Real start="0"/>
+      <!--Index = 1-->
+    </ScalarVariable>
+    <ScalarVariable causality="output" description="DisplacementOutput" initial="calculated" name="DisplacementOutput" valueReference="1" variability="continuous">
+      <Real/>
+      <!--Index = 2-->
+    </ScalarVariable>
+    <ScalarVariable causality="independent" description="time" name="time" valueReference="2" variability="continuous">
+      <Real/>
+      <!--Index = 3-->
+    </ScalarVariable>
+    <ScalarVariable causality="parameter" description="dampingCoefficient" initial="exact" name="dampingCoefficient" valueReference="3" variability="tunable">
+      <Real start="-100"/>
+      <!--Index = 4-->
+    </ScalarVariable>
+    <ScalarVariable causality="parameter" description="mass" initial="exact" name="mass" valueReference="4" variability="tunable">
+      <Real start="5"/>
+      <!--Index = 5-->
+    </ScalarVariable>
+    <ScalarVariable causality="parameter" description="springConstant" initial="exact" name="springConstant" valueReference="5" variability="tunable">
+      <Real start="-10"/>
+      <!--Index = 6-->
+    </ScalarVariable>
+  </ModelVariables>
+  <ModelStructure>
+    <Outputs>
+      <Unknown index="2"/>
+    </Outputs>
+    <InitialUnknowns>
+      <Unknown index="2"/>
+    </InitialUnknowns>
+  </ModelStructure>
+</fmiModelDescription>
