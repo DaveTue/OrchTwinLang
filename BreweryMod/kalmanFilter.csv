@@ -1,0 +1,8 @@
+Field,Value
+inputsNames,"x_measure,x_cal"
+outputsNames,x_hat
+parametersNames,"P_prev,sigma_sensor_default"
+exeSchedule,1:step
+modelName,kalmanFilter
+type,SimModel
+model,BreweryMod.kalman_filter.KalmanFilter

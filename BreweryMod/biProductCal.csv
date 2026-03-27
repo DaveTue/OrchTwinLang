@@ -1,0 +1,8 @@
+Field,Value
+inputsNames,c_sugar
+outputsNames,"conc_yeast,conc_etOH,ABV_etOH"
+parametersNames,"sug_init,yeast_grams,volume_squaremeters"
+exeSchedule,1:execute
+modelName,biProductCal
+type,SimModel
+model,BreweryMod.BiProducts.biProducts
