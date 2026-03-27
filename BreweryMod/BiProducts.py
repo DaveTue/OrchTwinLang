@@ -62,7 +62,7 @@ class biProducts:
         
         return ABV
     
-    def calculation(self, c_sugar: float) -> tuple:
+    def execute(self, c_sugar: float) -> tuple:
         """ calculates all the biproducts based on the current sugar concentration."""
         self.yeast_initial()
         ABV_etOH = self.ABV_etOH(c_sugar)
