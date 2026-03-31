@@ -1,5 +1,5 @@
 # Virtual environment
-qr_env/
+env_api/
 
 # Python cache
 __pycache__/
