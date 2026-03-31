@@ -1,0 +1,6 @@
+# Virtual environment
+qr_env/
+
+# Python cache
+__pycache__/
+*.pyc
